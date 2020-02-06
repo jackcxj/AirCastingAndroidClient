@@ -1,137 +1,207 @@
 <?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="pl.llp.aircasting">
+    <!-- Settings -->
+    <supports-screens
+        android:anyDensity="true"
+        android:largeScreens="true"
+        android:normalScreens="true"
+        android:smallScreens="true" /> <!-- Permissions -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="pl.llp.aircasting" >
+    <uses-feature android:name="android.hardware.camera" />
+    <uses-feature android:name="android.hardware.location.gps" />
+    <uses-feature android:name="android.hardware.location.network" />
 
-  <!-- Settings -->
-  <supports-screens android:anyDensity="true" android:largeScreens="true" android:normalScreens="true" android:smallScreens="true"/>
+    <application
+        android:name=".guice.AirCastingApplication"
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:largeHeap="true"
+        android:usesCleartextTraffic="true">
+        <activity android:name=".screens.stream.map.AirCastingMapActivity2"></activity>
+        <!-- Libraries -->
+        <uses-library android:name="com.google.android.maps" />
 
-  <!-- Permissions -->
-  <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-  <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
-  <uses-permission android:name="android.permission.INTERNET"/>
-  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-  <uses-permission android:name="android.permission.RECORD_AUDIO"/>
-  <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
-  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-  <uses-permission android:name="android.permission.BLUETOOTH"/>
-  <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
-  <uses-permission android:name="android.permission.VIBRATE"/>
-  <uses-permission android:name="android.permission.CAMERA"/>
-  <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+        <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="@integer/google_play_services_version" />
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="@string/com.google.android.geo.API_KEY" /> <!-- Activities -->
+        <activity
+            android:name=".screens.SplashActivity"
+            android:label="@string/app_name"
+            android:noHistory="true"
+            android:theme="@style/AirCastingTheme">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
 
-  <uses-feature android:name="android.hardware.camera" />
-  <uses-feature android:name="android.hardware.location.gps" />
-  <uses-feature android:name="android.hardware.location.network" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".screens.stream.graph.GraphActivity"
+            android:label="@string/app_name"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait"
+            android:theme="@style/AirCastingTheme" />
+        <activity
+            android:name=".screens.sessions.SessionsActivity"
+            android:label="@string/app_name"
+            android:launchMode="singleTask"
+            android:theme="@style/AirCastingTheme" />
+        <activity
+            android:name=".screens.sessionRecord.SaveSessionActivity"
+            android:label="@string/session_details"
+            android:theme="@style/Dialog" />
+        <activity
+            android:name=".screens.sessionRecord.EditSessionActivity"
+            android:label="@string/session_details"
+            android:theme="@style/Dialog" />
+        <activity
+            android:name=".screens.settings.SettingsActivity"
+            android:launchMode="singleTask"
+            android:theme="@style/AirCastingTheme" />
+        <activity
+            android:name=".screens.airbeamConfiguration.ChooseSessionTypeActivity"
+            android:label="@string/choose_session_type"
+            android:theme="@style/Dialog" />
+        <activity
+            android:name=".screens.airbeamConfiguration.ChooseStreamingMethodActivity"
+            android:label="@string/choose_streaming_method"
+            android:theme="@style/Dialog" />
+        <activity
+            android:name=".screens.airbeamConfiguration.GetWifiCredentialsActivity"
+            android:label="@string/input_wifi_credentials"
+            android:theme="@style/Dialog" />
+        <activity
+            android:name=".screens.sessions.OpenMobileSessionActivity"
+            android:label="@string/session_options"
+            android:theme="@style/Dialog" />
+        <activity
+            android:name=".screens.sessions.OpenFixedSessionActivity"
+            android:label="@string/session_options"
+            android:theme="@style/Dialog" />
+        <activity
+            android:name=".screens.stream.map.AirCastingMapActivity"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait"
+            android:theme="@style/AirCastingTheme" />
+        <activity
+            android:name=".screens.about.AboutActivity"
+            android:theme="@style/AirCastingTheme" />
+        <activity
+            android:name=".screens.sessionRecord.MakeANoteActivity"
+            android:label="@string/make_a_note"
+            android:theme="@style/Dialog" />
+        <activity
+            android:name=".screens.stream.NoteViewerActivity"
+            android:label="@string/view_note"
+            android:theme="@style/Dialog" />
+        <activity
+            android:name=".screens.stream.ThresholdsActivity"
+            android:label="@string/color_scale"
+            android:theme="@style/Dialog" />
+        <activity
+            android:name=".screens.userAccount.SignUpActivity"
+            android:label="@string/connect_to_aircasting"
+            android:theme="@style/Dialog" />
+        <activity
+            android:name=".screens.userAccount.SignOutActivity"
+            android:label="@string/sign_out"
+            android:theme="@style/Dialog" />
+        <activity
+            android:name=".screens.userAccount.SignInActivity"
+            android:label="@string/sign_in"
+            android:theme="@style/Dialog" />
+        <activity
+            android:name=".screens.userAccount.ResetPasswordActivity"
+            android:label="@string/reset_password"
+            android:theme="@style/Dialog" />
+        <activity
+            android:name=".screens.userAccount.ProfileActivity"
+            android:label="@string/profile"
+            android:theme="@style/Dialog" />
+        <activity
+            android:name=".screens.sessionRecord.ContributeActivity"
+            android:label="@string/contribute_to_crowd_map"
+            android:theme="@style/Dialog" />
+        <activity
+            android:name=".screens.sessions.shareSession.ShareSessionActivity"
+            android:label="@string/share_session"
+            android:theme="@style/Dialog" />
+        <activity
+            android:name=".screens.extsens.ExternalSensorActivity"
+            android:label="@string/external_devices"
+            android:theme="@style/Dialog" />
+        <activity
+            android:name=".screens.dashboard.DashboardActivity"
+            android:label="@string/measurement_streams"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait"
+            android:theme="@style/AirCastingTheme" />
+        <activity
+            android:name=".screens.dashboard.StreamOptionsActivity"
+            android:label="@string/stream_options"
+            android:theme="@style/Dialog" />
+        <activity
+            android:name=".screens.settings.BackendSettingsActivity"
+            android:label="@string/backend_settings"
+            android:theme="@style/Dialog" />
+        <activity
+            android:name=".screens.settings.DisableMapSettingsActivity"
+            android:label="@string/disable_maps"
+            android:theme="@style/Dialog" />
+        <activity
+            android:name=".screens.sessionRecord.StartFixedSessionActivity"
+            android:label="@string/start_fixed_session"
+            android:theme="@style/Dialog" />
+        <activity
+            android:name=".screens.sessions.LocationPickerActivity"
+            android:label="@string/pick_location"
+            android:theme="@style/AirCastingTheme" />
+        <activity
+            android:name=".screens.sessionRecord.StartMobileSessionActivity"
+            android:label="@string/start_mobile_session"
+            android:theme="@style/Dialog" />
+        <activity
+            android:name=".screens.dashboard.FakeActivity"
+            android:theme="@android:style/Theme.NoDisplay" /> <!-- Services -->
+        <service android:name=".sensor.common.SensorService" />
+        <service android:name=".storage.DatabaseWriterService" />
+        <service android:name=".sessionSync.SyncService" />
+        <service android:name=".sensor.ioio.IOIOService" />
+        <service android:name=".sessionSync.StreamingSessionsSyncService" /> <!-- Receivers -->
+        <receiver android:name=".sessionSync.NetworkReceiver">
+            <intent-filter>
+                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
+            </intent-filter>
+        </receiver>
 
-  <application android:icon="@mipmap/ic_launcher"
-      android:allowBackup="false"
-      android:label="@string/app_name"
-      android:name=".guice.AirCastingApplication"
-      android:usesCleartextTraffic="true"
-      android:largeHeap="true">
-    <!-- Libraries -->
-    <uses-library android:name="com.google.android.maps"/>
+        <provider
+            android:name="android.support.v4.content.FileProvider"
+            android:authorities="pl.llp.aircasting.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+    </application>
 
-    <meta-data android:name="com.google.android.gms.version" android:value="@integer/google_play_services_version" />
-    <meta-data android:name="com.google.android.geo.API_KEY" android:value="@string/com.google.android.geo.API_KEY"/>
-
-    <!-- Activities -->
-    <activity android:label="@string/app_name" android:name=".screens.SplashActivity" android:noHistory="true" android:theme="@style/AirCastingTheme">
-      <intent-filter>
-        <action android:name="android.intent.action.MAIN"/>
-        <category android:name="android.intent.category.LAUNCHER"/>
-      </intent-filter>
-    </activity>
-
-    <activity android:label="@string/app_name" android:name=".screens.stream.graph.GraphActivity" android:theme="@style/AirCastingTheme" android:launchMode="singleTask" android:screenOrientation="portrait"/>
-
-    <activity android:label="@string/app_name" android:name=".screens.sessions.SessionsActivity" android:theme="@style/AirCastingTheme" android:launchMode="singleTask"/>
-
-    <activity android:label="@string/session_details" android:name=".screens.sessionRecord.SaveSessionActivity" android:theme="@style/Dialog"/>
-
-    <activity android:label="@string/session_details" android:name=".screens.sessionRecord.EditSessionActivity" android:theme="@style/Dialog"/>
-
-    <activity android:name=".screens.settings.SettingsActivity" android:theme="@style/AirCastingTheme" android:launchMode="singleTask"/>
-
-    <activity android:label="@string/choose_session_type" android:name=".screens.airbeamConfiguration.ChooseSessionTypeActivity" android:theme="@style/Dialog" />
-
-    <activity android:label="@string/choose_streaming_method" android:name=".screens.airbeamConfiguration.ChooseStreamingMethodActivity" android:theme="@style/Dialog" />
-
-    <activity android:label="@string/input_wifi_credentials" android:name=".screens.airbeamConfiguration.GetWifiCredentialsActivity" android:theme="@style/Dialog" />
-
-    <activity android:label="@string/session_options" android:name=".screens.sessions.OpenMobileSessionActivity" android:theme="@style/Dialog"/>
-
-    <activity android:label="@string/session_options" android:name=".screens.sessions.OpenFixedSessionActivity" android:theme="@style/Dialog"/>
-
-    <activity android:name=".screens.stream.map.AirCastingMapActivity" android:theme="@style/AirCastingTheme" android:launchMode="singleTask" android:screenOrientation="portrait"/>
-
-    <activity android:name=".screens.about.AboutActivity" android:theme="@style/AirCastingTheme"/>
-
-    <activity android:label="@string/make_a_note" android:name=".screens.sessionRecord.MakeANoteActivity" android:theme="@style/Dialog"/>
-
-    <activity android:label="@string/view_note" android:name=".screens.stream.NoteViewerActivity" android:theme="@style/Dialog" />
-
-    <activity android:label="@string/color_scale" android:name=".screens.stream.ThresholdsActivity" android:theme="@style/Dialog"/>
-
-    <activity android:label="@string/connect_to_aircasting" android:name=".screens.userAccount.SignUpActivity" android:theme="@style/Dialog"/>
-
-    <activity android:label="@string/sign_out" android:name=".screens.userAccount.SignOutActivity" android:theme="@style/Dialog"/>
-
-    <activity android:label="@string/sign_in" android:name=".screens.userAccount.SignInActivity" android:theme="@style/Dialog"/>
-
-    <activity android:label="@string/reset_password" android:name=".screens.userAccount.ResetPasswordActivity" android:theme="@style/Dialog"/>
-
-    <activity android:label="@string/profile" android:name=".screens.userAccount.ProfileActivity" android:theme="@style/Dialog"/>
-
-    <activity android:label="@string/contribute_to_crowd_map" android:name=".screens.sessionRecord.ContributeActivity" android:theme="@style/Dialog"/>
-
-    <activity android:label="@string/share_session" android:name=".screens.sessions.shareSession.ShareSessionActivity" android:theme="@style/Dialog"/>
-
-    <activity android:label="@string/external_devices" android:name=".screens.extsens.ExternalSensorActivity" android:theme="@style/Dialog"/>
-
-    <activity android:label="@string/measurement_streams" android:name=".screens.dashboard.DashboardActivity" android:theme="@style/AirCastingTheme" android:screenOrientation="portrait" android:launchMode="singleTask"/>
-
-    <activity android:label="@string/stream_options" android:name=".screens.dashboard.StreamOptionsActivity" android:theme="@style/Dialog" />
-
-    <activity android:label="@string/backend_settings" android:name=".screens.settings.BackendSettingsActivity" android:theme="@style/Dialog"/>
-
-    <activity android:label="@string/disable_maps" android:name=".screens.settings.DisableMapSettingsActivity" android:theme="@style/Dialog"/>
-
-    <activity android:label="@string/start_fixed_session" android:name=".screens.sessionRecord.StartFixedSessionActivity" android:theme="@style/Dialog"/>
-
-    <activity android:label="@string/pick_location" android:name=".screens.sessions.LocationPickerActivity" android:theme="@style/AirCastingTheme" />
-
-    <activity android:label="@string/start_mobile_session" android:name=".screens.sessionRecord.StartMobileSessionActivity" android:theme="@style/Dialog"/>
-
-    <activity android:name=".screens.dashboard.FakeActivity" android:theme="@android:style/Theme.NoDisplay"/>
-
-    <!-- Services -->
-    <service android:name=".sensor.common.SensorService"/>
-
-    <service android:name=".storage.DatabaseWriterService"/>
-
-    <service android:name=".sessionSync.SyncService"/>
-
-    <service android:name=".sensor.ioio.IOIOService"/>
-
-    <service android:name=".sessionSync.StreamingSessionsSyncService"/>
-
-    <!-- Receivers -->
-    <receiver android:name=".sessionSync.NetworkReceiver">
-      <intent-filter>
-        <action android:name="android.net.conn.CONNECTIVITY_CHANGE"/>
-      </intent-filter>
-    </receiver>
-
-    <provider android:name="android.support.v4.content.FileProvider"
-        android:authorities="pl.llp.aircasting.fileprovider"
-        android:grantUriPermissions="true"
-        android:exported="false">
-      <meta-data
-          android:name="android.support.FILE_PROVIDER_PATHS"
-          android:resource="@xml/file_paths" />
-    </provider>
-  </application>
 </manifest>
