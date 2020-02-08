@@ -39,7 +39,7 @@ public class StreamOptionsActivity extends DialogActivity implements View.OnClic
                 finish();
                 break;
             case R.id.map_button:
-                startActivity(new Intent(context, AirCastingMapActivity2.class));
+                startActivity(new Intent(context, AirCastingMapActivity.class));
                 finish();
                 break;
         }
