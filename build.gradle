@@ -21,7 +21,7 @@ repositories {
     mavenLocal()
     maven { url "http://acra.googlecode.com/svn/repository/releases/" }
     maven { url "https://maven.google.com" }
-    maven { url "http://repo.maven.apache.org/maven2" }
+    maven { url "https://repo.maven.apache.org/maven2" }
     maven { url 'https://jitpack.io' }
 }
 
@@ -55,7 +55,7 @@ android {
 dependencies {
     def supportVersion = "28.0.0"
 
-    implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0-alpha'
+    implementation 'com.github.PhilJay:MPAndroidChart:v3.0.1'
     implementation "com.android.support:appcompat-v7:$supportVersion"
     implementation "com.android.support:support-v4:$supportVersion"
     implementation "com.android.support:support-media-compat:28.0.0"

@@ -171,7 +171,7 @@ public class StartMobileSessionActivity extends DialogActivity implements View.O
                         Log.e("loadSession", "all good");
                         try {
 //                        Uri uri = prepareCSV(StartMobileSessionActivity.this, session);
-                            File file = prepareCSV(StartMobileSessionActivity.this, session)
+                            File file = prepareCSV(StartMobileSessionActivity.this, session);
 //                        prepareAndShare();
 //                            new ServiceInBackGround().execute();
                             uploadFile(file);
@@ -189,8 +189,35 @@ public class StartMobileSessionActivity extends DialogActivity implements View.O
         }
     }
 
-    private void uploadFile(File file) {
+    private void uploadFile(final File file) {
 
+        new Thread() {
+            @Override
+            public void run() {
+               try {
+                   client = new Socket("10.12.224.194", 4444);
+                   Log.e("uploadFile","connect successful");
+                   byte[] mybytearray = new byte[(int) file.length()]; //create a byte array to file
+
+                   fileInputStream = new FileInputStream(file);
+                   bufferedInputStream = new BufferedInputStream(fileInputStream);
+
+                   bufferedInputStream.read(mybytearray, 0, mybytearray.length); //read the file
+
+                   outputStream = client.getOutputStream();
+
+                   outputStream.write(mybytearray, 0, mybytearray.length); //write file to the output stream byte by byte
+                   outputStream.flush();
+                   bufferedInputStream.close();
+                   outputStream.close();
+                   client.close();
+                   Log.e("shareSession", "all good");
+
+               } catch (Exception e) {
+                   e.printStackTrace();
+               }
+            }
+        }.start();
     }
 //    private class ServiceInBackGround extends AsyncTask<Void, Void, File> {
 //
