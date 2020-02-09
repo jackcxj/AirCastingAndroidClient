@@ -21,6 +21,9 @@ package pl.llp.aircasting.screens.stream.map;
 
 import android.content.Context;
 import android.util.AttributeSet;
+
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.maps.GeoPoint;
 import com.google.android.maps.MapView;
 
@@ -36,6 +39,7 @@ import java.util.List;
  * Adds functionality for listening to viewport change to the standard MapView
  */
 public class AirCastingMapView extends MapView {
+
     private List<Listener> listeners = new ArrayList<Listener>();
     private int zoom;
     private GeoPoint center;

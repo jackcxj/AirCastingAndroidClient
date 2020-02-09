@@ -1,86 +1,72 @@
 /**
-    AirCasting - Share your Air!
-    Copyright (C) 2011-2012 HabitatMap, Inc.
+ AirCasting - Share your Air!
+ Copyright (C) 2011-2012 HabitatMap, Inc.
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-    You can contact the authors by email at <info@habitatmap.org>
-*/
+ You can contact the authors by email at <info@habitatmap.org>
+ */
 package pl.llp.aircasting.screens.stream.map;
 
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.os.Build;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
-import android.view.*;
-import android.view.animation.Animation;
-import android.widget.Button;
-import android.widget.ImageView;
-
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.location.LocationListener;
-import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.maps.CameraUpdateFactory;
-import com.google.android.gms.maps.GoogleMap;
-import com.google.android.gms.maps.OnMapReadyCallback;
-import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.BitmapDescriptorFactory;
-import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.Marker;
-import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.maps.MapController;
-import com.google.android.maps.OverlayItem;
-import com.google.common.eventbus.Subscribe;
-import pl.llp.aircasting.Intents;
-import pl.llp.aircasting.R;
-import pl.llp.aircasting.screens.common.helpers.LocationHelper;
-import pl.llp.aircasting.screens.stream.base.AirCastingActivity;
-import pl.llp.aircasting.event.session.VisibleSessionUpdatedEvent;
-import pl.llp.aircasting.networking.drivers.AveragesDriver;
-import pl.llp.aircasting.event.sensor.LocationEvent;
-import pl.llp.aircasting.event.session.NoteCreatedEvent;
-import pl.llp.aircasting.event.ui.DoubleTapEvent;
-import pl.llp.aircasting.event.ui.VisibleStreamUpdatedEvent;
-import pl.llp.aircasting.screens.common.ToastHelper;
-import pl.llp.aircasting.screens.common.sessionState.VisibleSession;
-import pl.llp.aircasting.model.Measurement;
-import pl.llp.aircasting.model.Note;
-import pl.llp.aircasting.model.Sensor;
-import pl.llp.aircasting.model.internal.Region;
-import pl.llp.aircasting.networking.httpUtils.HttpResult;
-import pl.llp.aircasting.screens.stream.MeasurementPresenter;
-
 import android.location.Location;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.animation.Animation;
+import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.Toast;
+
 import com.google.android.maps.GeoPoint;
+import com.google.android.maps.MapController;
+import com.google.android.maps.OverlayItem;
 import com.google.android.maps.Projection;
+import com.google.common.eventbus.Subscribe;
 import com.google.inject.Inject;
 
+import java.util.List;
+
+import pl.llp.aircasting.Intents;
+import pl.llp.aircasting.R;
+import pl.llp.aircasting.event.sensor.LocationEvent;
+import pl.llp.aircasting.event.session.NoteCreatedEvent;
+import pl.llp.aircasting.event.session.VisibleSessionUpdatedEvent;
+import pl.llp.aircasting.event.ui.DoubleTapEvent;
+import pl.llp.aircasting.event.ui.VisibleStreamUpdatedEvent;
+import pl.llp.aircasting.model.Measurement;
+import pl.llp.aircasting.model.Note;
+import pl.llp.aircasting.model.Sensor;
+import pl.llp.aircasting.model.internal.Region;
+import pl.llp.aircasting.networking.drivers.AveragesDriver;
+import pl.llp.aircasting.networking.httpUtils.HttpResult;
+import pl.llp.aircasting.screens.common.ToastHelper;
+import pl.llp.aircasting.screens.common.helpers.LocationHelper;
+import pl.llp.aircasting.screens.common.sessionState.VisibleSession;
+import pl.llp.aircasting.screens.stream.MeasurementPresenter;
+import pl.llp.aircasting.screens.stream.base.AirCastingActivity;
 import roboguice.inject.InjectResource;
 import roboguice.inject.InjectView;
-
-import java.util.List;
 
 import static java.lang.Math.min;
 import static pl.llp.aircasting.screens.common.helpers.LocationHelper.REQUEST_CHECK_SETTINGS;
@@ -94,10 +80,7 @@ import static pl.llp.aircasting.screens.stream.map.MapIdleDetector.detectMapIdle
  * Date: 10/17/11
  * Time: 5:04 PM
  */
-public class AirCastingMapActivity extends AirCastingActivity implements MapIdleDetector.MapIdleListener, MeasurementPresenter.Listener, LocationHelper.LocationSettingsListener, OnMapReadyCallback,
-        GoogleApiClient.ConnectionCallbacks,
-        GoogleApiClient.OnConnectionFailedListener,
-        LocationListener {
+public class AirCastingMapActivity extends AirCastingActivity implements MapIdleDetector.MapIdleListener, MeasurementPresenter.Listener, LocationHelper.LocationSettingsListener {
 
     private static final String HEAT_MAP_VISIBLE = "heat_map_visible";
 
@@ -134,29 +117,12 @@ public class AirCastingMapActivity extends AirCastingActivity implements MapIdle
     private MapIdleDetector routeRefreshDetector;
     private int mRequestedAction;
 
-    private GoogleMap mMap;
-
-    private GoogleApiClient googleApiClient;
-    private LocationRequest locationRequest;
-    private Location lastLocation;
-    private Marker currentUserLocationMarker;
-    private static final int Request_User_Location_Code = 99;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         noteOverlay.setContext(this);
 
         setContentView(R.layout.heat_map);
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            checkUserLocationPermission();
-        }
-
-        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map2);
-        mapFragment.getMapAsync(this);
 
         initToolbar("Map");
         initNavigationDrawer();
@@ -168,6 +134,7 @@ public class AirCastingMapActivity extends AirCastingActivity implements MapIdle
         if (!visibleSession.isVisibleSessionViewed()) {
             mapView.getOverlays().add(locationOverlay);
         }
+
     }
 
     @Override
@@ -618,107 +585,4 @@ public class AirCastingMapActivity extends AirCastingActivity implements MapIdle
         }
     }
 
-    @Override
-    public void onMapReady(GoogleMap googleMap) {
-        mMap = googleMap;
-
-        buildGoogleApiClient();
-        mMap.setMyLocationEnabled(true);
-        // Add a marker in Sydney and move the camera
-//        LatLng sydney = new LatLng(-34, 151);
-//        mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
-//        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
-    }
-
-    protected synchronized void buildGoogleApiClient() {
-
-        googleApiClient = new GoogleApiClient.Builder(this)
-                .addConnectionCallbacks(this)
-                .addOnConnectionFailedListener(this)
-                .addApi(LocationServices.API)
-                .build();
-
-        googleApiClient.connect();
-    }
-
-    public boolean checkUserLocationPermission() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, Request_User_Location_Code);
-            } else {
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, Request_User_Location_Code);
-            }
-            return false;
-        } else {
-            return false;
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        switch (requestCode) {
-            case Request_User_Location_Code:
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-
-                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                        if (googleApiClient == null) {
-                            buildGoogleApiClient();
-                        }
-                        mMap.setMyLocationEnabled(true);
-                    }
-                } else {
-                    Toast.makeText(this, "Permission Denied...", Toast.LENGTH_SHORT).show();
-                }
-        }
-    }
-
-    @Override
-    public void onLocationChanged(Location location) {
-
-        lastLocation = location;
-
-        if (currentUserLocationMarker != null) {
-            currentUserLocationMarker.remove();
-        }
-
-        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-
-        MarkerOptions markerOptions = new MarkerOptions();
-        markerOptions.position(latLng);
-        markerOptions.title("User Current Location");
-        markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
-
-        currentUserLocationMarker = mMap.addMarker(markerOptions);
-
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
-        mMap.animateCamera(CameraUpdateFactory.zoomBy(12));
-
-        if (googleApiClient != null) {
-            LocationServices.FusedLocationApi.removeLocationUpdates(googleApiClient, (com.google.android.gms.location.LocationListener) this);
-        }
-    }
-
-    @Override
-    public void onConnected(@Nullable Bundle bundle) {
-
-        locationRequest = new LocationRequest();
-        locationRequest.setInterval(1100);
-        locationRequest.setFastestInterval(1100);
-        locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
-
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-
-            LocationServices.FusedLocationApi.requestLocationUpdates(googleApiClient, locationRequest, (com.google.android.gms.location.LocationListener) this);
-        }
-    }
-
-    @Override
-    public void onConnectionSuspended(int i) {
-
-    }
-
-    @Override
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-
-    }
 }

@@ -11,9 +11,11 @@ import android.support.v7.app.AppCompatCallback;
 import android.support.v7.app.AppCompatDelegate;
 import android.support.v7.view.ActionMode;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.google.android.maps.MapActivity;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 
@@ -46,7 +48,7 @@ import roboguice.inject.InjectorProvider;
  * Date: 1/16/12
  * Time: 12:35 PM
  */
-public abstract class RoboMapActivityWithProgress extends FragmentActivity implements ActivityWithProgress, AppCompatCallback, View.OnClickListener, InjectorProvider {
+public abstract class RoboMapActivityWithProgress extends MapActivity implements ActivityWithProgress, AppCompatCallback, View.OnClickListener, InjectorProvider {
     @Inject
     NavigationDrawerHelper navigationDrawerHelper;
     @Inject
@@ -125,7 +127,6 @@ public abstract class RoboMapActivityWithProgress extends FragmentActivity imple
         }
     }
 
-    //TODO
     @Override
     public void onPostResume() {
         super.onPostResume();
@@ -171,8 +172,12 @@ public abstract class RoboMapActivityWithProgress extends FragmentActivity imple
 
     @Override
     public void setContentView(int layoutResID) {
+        Log.e("setContentView","start");
         super.setContentView(layoutResID);
+        Log.e("setContentView","end");
+        Log.e("injectViews","start");
         scope.injectViews();
+        Log.e("injectViews","end");
         eventManager.fire(new OnContentViewAvailableEvent());
     }
 
@@ -191,7 +196,7 @@ public abstract class RoboMapActivityWithProgress extends FragmentActivity imple
     }
 
     @Override
-    public Object onRetainCustomNonConfigurationInstance() {
+    public Object onRetainNonConfigurationInstance() {
         return task;
     }
 

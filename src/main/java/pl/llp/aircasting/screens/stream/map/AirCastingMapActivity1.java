@@ -1,5 +1,13 @@
 package pl.llp.aircasting.screens.stream.map;
 import pl.llp.aircasting.R;
+import pl.llp.aircasting.screens.common.base.SimpleProgressTask;
+import pl.llp.aircasting.screens.common.helpers.NavigationDrawerHelper;
+import roboguice.activity.event.OnCreateEvent;
+import roboguice.activity.event.OnStartEvent;
+import roboguice.application.RoboApplication;
+import roboguice.event.EventManager;
+import roboguice.inject.ContextScope;
+import roboguice.inject.InjectorProvider;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
@@ -11,6 +19,12 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AppCompatCallback;
+import android.support.v7.app.AppCompatDelegate;
+import android.support.v7.view.ActionMode;
+import android.support.v7.widget.Toolbar;
+import android.view.View;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -27,13 +41,21 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.location.LocationListener;
+import com.google.inject.Inject;
+import com.google.inject.Injector;
 
 
-public class AirCastingMapActivity2 extends FragmentActivity implements
+public class AirCastingMapActivity1 extends FragmentActivity implements
         OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
-        LocationListener {
+        LocationListener, AppCompatCallback, InjectorProvider {
+
+    public AppCompatDelegate delegate;
+    public Toolbar toolbar;
+    @Inject NavigationDrawerHelper navigationDrawerHelper;
+    protected EventManager eventManager;
+    protected ContextScope scope;
 
     private GoogleMap mMap;
 
@@ -48,7 +70,16 @@ public class AirCastingMapActivity2 extends FragmentActivity implements
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_air_casting_map2);
+        final Injector injector = getInjector();
+        eventManager = injector.getInstance(EventManager.class);
+        scope = injector.getInstance(ContextScope.class);
+        scope.enter(this);
+        injector.injectMembers(this);
+        eventManager.fire(new OnCreateEvent(savedInstanceState));
+
+        getDelegate().onCreate(savedInstanceState);
+
+        setContentView(R.layout.new_map);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             checkUserLocationPermission();
@@ -56,10 +87,59 @@ public class AirCastingMapActivity2 extends FragmentActivity implements
 
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map2);
+                .findFragmentById(R.id.map_id);
         mapFragment.getMapAsync(this);
+        View mapView = mapFragment.getView();
+        if (mapView != null &&
+                mapView.findViewById(1) != null) {
+            // Get the button view
+            View locationButton = ((View) mapView.findViewById(1).getParent()).findViewById(2);
+            // and next place it, on bottom right (as Google Maps app)
+            RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams)
+                    locationButton.getLayoutParams();
+            // position on right bottom
+            layoutParams.addRule(RelativeLayout.ALIGN_PARENT_TOP, 0);
+            layoutParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM, RelativeLayout.TRUE);
+            layoutParams.setMargins(0, 0, 30, 30);
+        }
+        initToolbar("Map");
+        initNavigationDrawer();
     }
 
+    public void initToolbar(String title) {
+        toolbar = (Toolbar) findViewById(R.id.toolbar);
+        toolbar.setNavigationIcon(R.drawable.navigation_empty_icon);
+        toolbar.setContentInsetStartWithNavigation(0);
+        getDelegate().setSupportActionBar(toolbar);
+        getDelegate().setTitle(title);
+    }
+
+    public AppCompatDelegate getDelegate() {
+        if (delegate == null) {
+            delegate = AppCompatDelegate.create(this, this);
+        }
+        return delegate;
+    }
+
+    @Override
+    public void onSupportActionModeStarted(ActionMode mode) { }
+
+    @Override
+    public void onSupportActionModeFinished(ActionMode mode) { }
+
+    @Override
+    public ActionMode onWindowStartingSupportActionMode(ActionMode.Callback callback) {
+        return null;
+    }
+
+    public void initNavigationDrawer() {
+        navigationDrawerHelper.initNavigationDrawer(toolbar, this);
+    }
+
+    @Override
+    public Injector getInjector() {
+        return ((RoboApplication) getApplication()).getInjector();
+    }
 
     /**
      * Manipulates the map once available.

@@ -42,7 +42,7 @@
                         android:background="@android:color/background_light"
         >
 
-            <include layout="@layout/map2"/>
+            <include layout="@layout/map"/>
 
             <include layout="@layout/gauges"/>
 
