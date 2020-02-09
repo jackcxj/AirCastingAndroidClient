@@ -188,7 +188,7 @@ public class AirCastingMapActivity extends AirCastingActivity implements MapIdle
             case R.id.toggle_aircasting:
                 mRequestedAction = ACTION_TOGGLE;
 
-                if (!settingsHelper.areMapsDisabled()) {
+                if (settingsHelper.areMapsDisabled()) {
                     if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                         locationHelper.checkLocationSettings(this);
                     }

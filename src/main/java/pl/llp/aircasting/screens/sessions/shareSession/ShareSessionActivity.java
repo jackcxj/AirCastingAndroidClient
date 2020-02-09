@@ -19,6 +19,7 @@ import pl.llp.aircasting.storage.repository.SessionRepository;
 import android.app.Application;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -134,6 +135,7 @@ public class ShareSessionActivity extends DialogActivity implements View.OnClick
             prepareAndShare();
         } else {
             loadSession();
+            Log.e("load session", "all ok");
         }
     }
 
@@ -179,7 +181,6 @@ public class ShareSessionActivity extends DialogActivity implements View.OnClick
             @Override
             protected void onPostExecute(Session session) {
                 super.onPostExecute(session);
-
                 prepareAndShare();
             }
         }.execute(id);

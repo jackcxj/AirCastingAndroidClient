@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatDelegate;
+import android.util.Log;
 import android.widget.Toast;
 
 import pl.llp.aircasting.R;
@@ -76,6 +77,7 @@ public class ToggleAircastingManager {
 
             if (session.isLocationless()) {
                 currentSessionManager.finishSession(sessionId, false);
+//                Log.e("stop without location", "crowdmap"); //this way
             } else if (settingsHelper.isContributingToCrowdMap()) {
                 currentSessionManager.finishSession(sessionId, true);
             }
@@ -83,7 +85,7 @@ public class ToggleAircastingManager {
     }
 
     public void startMobileAirCasting() {
-        if (!settingsHelper.areMapsDisabled()) {
+        if (settingsHelper.areMapsDisabled()) {
             if (ActivityCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(activity, LOCATION_PERMISSION, PERMISSIONS_REQUEST_FINE_LOCATION);
                 return;

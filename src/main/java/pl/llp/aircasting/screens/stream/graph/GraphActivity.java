@@ -114,7 +114,7 @@ public class GraphActivity extends AirCastingActivity implements View.OnClickLis
         switch (menuItem.getItemId()) {
             case R.id.toggle_aircasting:
 
-                if (!settingsHelper.areMapsDisabled()) {
+                if (settingsHelper.areMapsDisabled()) {
                     if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                         locationHelper.checkLocationSettings(this);
                     }

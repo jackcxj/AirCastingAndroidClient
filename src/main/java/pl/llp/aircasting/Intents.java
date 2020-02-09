@@ -43,6 +43,7 @@ import android.net.Uri;
 import android.provider.MediaStore;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.FileProvider;
+import android.util.Log;
 
 import java.io.File;
 import java.io.IOException;
@@ -155,6 +156,7 @@ public final class Intents {
         Intent intent = new Intent(Intent.ACTION_SEND);
         intent.setType(MIME_APPLICATION_ZIP);
 
+        Log.e("title", chooserTitle + "1");
         intent.putExtra(Intent.EXTRA_STREAM, uri);
         intent.putExtra(Intent.EXTRA_TEXT, text);
         intent.putExtra(Intent.EXTRA_SUBJECT, subject);
