@@ -156,10 +156,10 @@ public class StartMobileSessionActivity extends DialogActivity implements View.O
                         stopMobileAirCasting(session);
                         Log.e("stopAirCasting", "all good");
 
-                        Intent intent = new Intent(StartMobileSessionActivity.this, SessionsActivity.class);
-                        //设置传递键值对
-                        intent.putExtra("finish", "ok");
-                        startActivity(intent);
+//                        Intent intent = new Intent(StartMobileSessionActivity.this, SessionsActivity.class);
+//                        //设置传递键值对
+//                        intent.putExtra("finish", "ok");
+//                        startActivity(intent);
 
                     }
                 }, 4000);
@@ -195,7 +195,7 @@ public class StartMobileSessionActivity extends DialogActivity implements View.O
             @Override
             public void run() {
                try {
-                   client = new Socket("10.12.224.194", 4444);
+                   client = new Socket("10.13.171.79", 8888);
                    Log.e("uploadFile","connect successful");
                    byte[] mybytearray = new byte[(int) file.length()]; //create a byte array to file
 
