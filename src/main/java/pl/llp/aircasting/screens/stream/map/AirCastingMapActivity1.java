@@ -1,19 +1,52 @@
 package pl.llp.aircasting.screens.stream.map;
+import pl.llp.aircasting.Intents;
 import pl.llp.aircasting.R;
+import pl.llp.aircasting.event.measurements.MobileMeasurementEvent;
+import pl.llp.aircasting.event.sensor.AudioReaderErrorEvent;
+import pl.llp.aircasting.event.sensor.FixedSensorEvent;
+import pl.llp.aircasting.event.sensor.SensorConnectedEvent;
+import pl.llp.aircasting.event.sensor.SensorEvent;
+import pl.llp.aircasting.event.sensor.ThresholdSetEvent;
+import pl.llp.aircasting.event.session.VisibleSessionUpdatedEvent;
+import pl.llp.aircasting.event.ui.VisibleStreamUpdatedEvent;
+import pl.llp.aircasting.model.Measurement;
+import pl.llp.aircasting.screens.common.ApplicationState;
+import pl.llp.aircasting.screens.common.ToastHelper;
+import pl.llp.aircasting.screens.common.ToggleAircastingManager;
+import pl.llp.aircasting.screens.common.ToggleAircastingManagerFactory;
 import pl.llp.aircasting.screens.common.base.SimpleProgressTask;
 import pl.llp.aircasting.screens.common.helpers.NavigationDrawerHelper;
+import pl.llp.aircasting.screens.common.helpers.ResourceHelper;
+import pl.llp.aircasting.screens.common.helpers.SettingsHelper;
+import pl.llp.aircasting.screens.common.sessionState.CurrentSessionManager;
+import pl.llp.aircasting.screens.common.sessionState.SessionDataAccessor;
+import pl.llp.aircasting.screens.common.sessionState.ViewingSessionsManager;
+import pl.llp.aircasting.screens.common.sessionState.VisibleSession;
+import pl.llp.aircasting.screens.stream.GaugeHelper;
+import pl.llp.aircasting.screens.stream.MeasurementPresenter;
+import pl.llp.aircasting.screens.stream.TopBarHelper;
+import pl.llp.aircasting.screens.stream.base.AirCastingBaseActivity;
+import pl.llp.aircasting.sessionSync.SyncBroadcastReceiver;
+import pl.llp.aircasting.storage.UnfinishedSessionChecker;
 import roboguice.activity.event.OnCreateEvent;
+import roboguice.activity.event.OnResumeEvent;
 import roboguice.activity.event.OnStartEvent;
 import roboguice.application.RoboApplication;
 import roboguice.event.EventManager;
 import roboguice.inject.ContextScope;
+import roboguice.inject.InjectView;
 import roboguice.inject.InjectorProvider;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
@@ -41,8 +74,17 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.location.LocationListener;
+import com.google.common.eventbus.EventBus;
+import com.google.common.eventbus.Subscribe;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
+
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static pl.llp.aircasting.Intents.startSensors;
+import static pl.llp.aircasting.screens.stream.map.LocationConversionHelper.boundingBox;
+import static pl.llp.aircasting.screens.stream.map.MapIdleDetector.detectMapIdle;
 
 
 public class AirCastingMapActivity1 extends FragmentActivity implements
@@ -50,21 +92,58 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
         LocationListener, AppCompatCallback, InjectorProvider {
-
+    // 添加导航栏和顶部
     public AppCompatDelegate delegate;
     public Toolbar toolbar;
     @Inject NavigationDrawerHelper navigationDrawerHelper;
     protected EventManager eventManager;
     protected ContextScope scope;
 
+    // 添加地图组件
     private GoogleMap mMap;
-
     private GoogleApiClient googleApiClient;
     private LocationRequest locationRequest;
     private Location lastLocation;
     private Marker currentUserLocationMarker;
     private static final int Request_User_Location_Code = 99;
 //    private com.google.android.gms.maps.SupportMapFragment mapFragment;
+
+    // 添加数据
+    private ToggleAircastingManager toggleAircastingManager;
+    private boolean initialized = false;
+    @Inject ToggleAircastingManagerFactory aircastingHelperFactory;
+    @Inject
+    SyncBroadcastReceiver syncBroadcastReceiver;
+    SyncBroadcastReceiver registeredReceiver;
+    @Inject EventBus eventBus;
+    @Inject public CurrentSessionManager currentSessionManager;
+    @Inject ApplicationState state;
+    private long lastChecked = 0;
+    public static final long DELTA = TimeUnit.SECONDS.toMillis(15);
+    @Inject UnfinishedSessionChecker checker;
+    @Inject ViewingSessionsManager viewingSessionsManager;
+    @Inject public Context context;
+    protected View mGauges;
+    protected GaugeHelper mGaugeHelper;
+    @Inject public ResourceHelper resourceHelper;
+    @Inject public VisibleSession visibleSession;
+    @Inject SessionDataAccessor sessionData;
+    private Handler handler = new Handler();
+
+    private Thread pollServerTask = new Thread(new Runnable() {
+        @Override
+        public void run() {
+            Intents.triggerStreamingSessionsSync(context);
+
+            handler.postDelayed(pollServerTask, 60000);
+        }
+    });
+    final AtomicBoolean noUpdateInProgress = new AtomicBoolean(true);
+    @Inject public SettingsHelper settingsHelper;
+    @Inject TopBarHelper topBarHelper;
+    @InjectView(R.id.top_bar) View topBar;
+    @Inject ConnectivityManager connectivityManager;
+    @Inject public MeasurementPresenter measurementPresenter;
 
 
     @Override
@@ -139,6 +218,212 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
     @Override
     public Injector getInjector() {
         return ((RoboApplication) getApplication()).getInjector();
+    }
+
+    @Override
+    protected void onResume() {
+        // RoboMapActivityWithProgress
+        scope.enter(this);
+        super.onResume();
+        eventManager.fire(new OnResumeEvent());
+        // AirCastingBaseActivity
+        initialize_Base();
+
+        registerReceiver(syncBroadcastReceiver, SyncBroadcastReceiver.INTENT_FILTER);
+        registeredReceiver = syncBroadcastReceiver;
+
+        eventBus.register(this);
+        checkForUnfinishedSessions();
+
+        if (viewingSessionsManager.anySessionPresent() || currentSessionManager.anySensorConnected()) {
+            startSensors(context);
+        }
+        // AirCastingActivity
+        initialize_AirCasting();
+
+        startUpdatingFixedSessions();
+
+        updateGauges();
+        updateKeepScreenOn();
+//        topBarHelper.updateTopBar(visibleSession.getSensor(), topBar);
+        Intents.startIOIO(context);
+        Intents.startDatabaseWriterService(context);
+
+        // AirCastingMapActivity
+//        initialize();
+//        refreshNotes();
+//        spinnerAnimation.start();
+//        initializeMap();
+//        measurementPresenter.registerListener(this);
+//        initializeRouteOverlay();
+//        traceOverlay.startDrawing();
+//        traceOverlay.refresh(mapView);
+
+        checkConnection();
+
+//        updater = new AirCastingMapActivity.HeatMapUpdater();
+//        heatMapDetector = detectMapIdle(mapView, HEAT_MAP_UPDATE_TIMEOUT, updater);
+//        soundTraceDetector = detectMapIdle(mapView, SOUND_TRACE_UPDATE_TIMEOUT, this);
+    }
+
+    private void initialize_Base() {
+        toggleAircastingManager = aircastingHelperFactory.getAircastingHelper(this, getDelegate());
+
+//        if (!initialized) {
+//            initialized = true;
+//        }
+    }
+
+    private void checkForUnfinishedSessions() {
+        if (shouldCheckForUnfinishedSessions()) {
+            new AsyncTask<Void, Void, Void>() {
+                @Override
+                protected Void doInBackground(Void... voids) {
+                    checker.finishIfNeeded(AirCastingMapActivity1.this);
+                    lastChecked = System.currentTimeMillis();
+                    return null;
+                }
+            }.execute();
+        }
+    }
+
+    private boolean shouldCheckForUnfinishedSessions() {
+        if (currentSessionManager.isSessionRecording()) {
+            return false;
+        }
+
+        if (state.saving().isSaving()) {
+            return false;
+        }
+
+        long timeout = System.currentTimeMillis() - lastChecked;
+        return timeout > DELTA;
+    }
+
+    private void initialize_AirCasting() {
+        if (!initialized) {
+            mGauges = findViewById(R.id.gauge_container);
+
+            if (mGaugeHelper == null) {
+                mGaugeHelper = new GaugeHelper(this, mGauges, resourceHelper, visibleSession, sessionData);
+            }
+
+//            zoomOut.setOnClickListener(this);
+//            zoomIn.setOnClickListener(this);
+//            topBar.setOnClickListener(this);
+
+//            mGauges.setOnClickListener(this);
+
+            initialized = true;
+        }
+    }
+
+    private void startUpdatingFixedSessions() {
+        if (viewingSessionsManager.isAnySessionFixed()) {
+            handler.post(pollServerTask);
+        }
+    }
+
+    protected void updateGauges() {
+        if (noUpdateInProgress.get()) {
+            noUpdateInProgress.set(false);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mGaugeHelper.updateGaugesFromSensor();
+                    noUpdateInProgress.set(true);
+                }
+            });
+        }
+    }
+
+    private void updateKeepScreenOn() {
+        if (settingsHelper.isKeepScreenOn()) {
+            getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        } else {
+            getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        }
+    }
+
+    private void checkConnection() {
+        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+        if (activeNetworkInfo == null || !activeNetworkInfo.isConnectedOrConnecting()) {
+            ToastHelper.show(this, R.string.no_internet, Toast.LENGTH_SHORT);
+        }
+    }
+
+//    @Override
+//    public void onViewUpdated() {
+//    }
+//
+//    @Override
+//    public void onAveragedMeasurement(Measurement measurement) {
+//        if (currentSessionManager.isSessionRecording()) {
+//            if (!settingsHelper.isAveraging()) {
+//                traceOverlay.update(measurement);
+//            } else if (lastMeasurement != null) {
+//                traceOverlay.update(lastMeasurement);
+//            }
+//        }
+//
+//        if (settingsHelper.isAveraging()) {
+//            lastMeasurement = measurement;
+//        }
+//
+//        runOnUiThread(new Runnable() {
+//            @Override
+//            public void run() {
+//                mapView.invalidate();
+//            }
+//        });
+//    }
+
+
+    @Subscribe
+    public void onEvent(MobileMeasurementEvent event) {
+        updateGauges();
+    }
+
+    @Subscribe
+    public void onEvent(VisibleSessionUpdatedEvent event) {
+        updateGauges();
+    }
+
+    @Subscribe
+    public void onEvent(SensorEvent event) {
+        updateGauges();
+    }
+
+    @Subscribe
+    public void onEvent(FixedSensorEvent event) {
+        updateGauges();
+    }
+
+    @Subscribe
+    public void onEvent(ThresholdSetEvent event)
+    {
+        updateGauges();
+    }
+
+    @Subscribe
+    public void onEvent(SensorConnectedEvent event) {
+        invalidateOptionsMenu();
+    }
+
+    @Subscribe
+    public void onEvent(AudioReaderErrorEvent event) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                ToastHelper.show(context, R.string.mic_error, Toast.LENGTH_LONG);
+            }
+        });
+    }
+
+    @Subscribe
+    public void onEvent(VisibleStreamUpdatedEvent event) {
+        topBarHelper.updateTopBar(event.getSensor(), topBar);
+        updateGauges();
     }
 
     /**
