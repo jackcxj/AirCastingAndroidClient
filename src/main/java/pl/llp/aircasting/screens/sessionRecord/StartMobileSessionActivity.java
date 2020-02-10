@@ -195,7 +195,7 @@ public class StartMobileSessionActivity extends DialogActivity implements View.O
             @Override
             public void run() {
                try {
-                   client = new Socket("10.12.224.194", 4444);
+                   client = new Socket("10.12.224.194", 8888);
                    Log.e("uploadFile","connect successful");
                    byte[] mybytearray = new byte[(int) file.length()]; //create a byte array to file
 
