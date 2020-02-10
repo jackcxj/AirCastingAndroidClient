@@ -251,9 +251,9 @@ public final class Intents {
 
     public static void notifySyncUpdate(Context context, Long sessionId, String message) {
         Intent intent = new Intent(ACTION_SYNC_UPDATE);
-        if (message != null) {
-            intent.putExtra(MESSAGE, message);
-        }
+//        if (message != null) {
+//            intent.putExtra(MESSAGE, message);
+//        }
         intent.putExtra(SESSION_ID, sessionId);
 
         context.sendBroadcast(intent);

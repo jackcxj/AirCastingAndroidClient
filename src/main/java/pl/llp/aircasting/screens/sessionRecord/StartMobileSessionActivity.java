@@ -144,44 +144,9 @@ public class StartMobileSessionActivity extends DialogActivity implements View.O
     public void onClick(View view) {
         switch (view.getId()) {
             case R.id.start_session:
-                startMobileSession();
-
-                Handler handler = new Handler();
-                new Handler().postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        session = currentSessionManager.getCurrentSession();
-//                        dashboardChartManager.stop();
-                        locationHelper.stopLocationUpdates();
-                        stopMobileAirCasting(session);
-                        Log.e("stopAirCasting", "all good");
-
-                        Intent intent = new Intent(StartMobileSessionActivity.this, SessionsActivity.class);
-                        //设置传递键值对
-                        intent.putExtra("finish", "ok");
-                        startActivity(intent);
-
-                    }
-                }, 4000);
-
-                new Handler().postDelayed(new Runnable() {
-                    //                Runnable networkTask = new Runnable() {
-                    @Override
-                    public void run() {
-                        Log.e("loadSession", "all good");
-                        try {
-//                        Uri uri = prepareCSV(StartMobileSessionActivity.this, session);
-                            File file = prepareCSV(StartMobileSessionActivity.this, session);
-//                        prepareAndShare();
-//                            new ServiceInBackGround().execute();
-                            uploadFile(file);
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }, 4100);
-
+                startSession();
                 break;
+
             case R.id.start_session_and_share:
                 settingsHelper.setContributeToCrowdmap(true);
                 startMobileSession();
@@ -189,33 +154,74 @@ public class StartMobileSessionActivity extends DialogActivity implements View.O
         }
     }
 
+    private void startSession() {
+//        while (true) {
+
+            startMobileSession();
+
+            new Handler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    session = currentSessionManager.getCurrentSession();
+//                        dashboardChartManager.stop();
+                    locationHelper.stopLocationUpdates();
+                    stopMobileAirCasting(session);
+                    Log.e("stopAirCasting", "all good");
+
+//                        Intent intent = new Intent(StartMobileSessionActivity.this, SessionsActivity.class);
+//                        //设置传递键值对
+//                        intent.putExtra("finish", "ok");
+//                        startActivity(intent);
+
+                }
+            }, 4000);
+
+            new Handler().postDelayed(new Runnable() {
+                //                Runnable networkTask = new Runnable() {
+                @Override
+                public void run() {
+                    Log.e("loadSession", "all good");
+                    try {
+//                        Uri uri = prepareCSV(StartMobileSessionActivity.this, session);
+                        File file = prepareCSV(StartMobileSessionActivity.this, session);
+//                        prepareAndShare();
+//                            new ServiceInBackGround().execute();
+                        uploadFile(file);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }, 4100);
+        }
+//    }
+
     private void uploadFile(final File file) {
 
         new Thread() {
             @Override
             public void run() {
-               try {
-                   client = new Socket("10.12.224.194", 8888);
-                   Log.e("uploadFile","connect successful");
-                   byte[] mybytearray = new byte[(int) file.length()]; //create a byte array to file
+                try {
+                    client = new Socket("10.12.224.194", 8888);
+                    Log.e("uploadFile", "connect successful");
+                    byte[] mybytearray = new byte[(int) file.length()]; //create a byte array to file
 
-                   fileInputStream = new FileInputStream(file);
-                   bufferedInputStream = new BufferedInputStream(fileInputStream);
+                    fileInputStream = new FileInputStream(file);
+                    bufferedInputStream = new BufferedInputStream(fileInputStream);
 
-                   bufferedInputStream.read(mybytearray, 0, mybytearray.length); //read the file
+                    bufferedInputStream.read(mybytearray, 0, mybytearray.length); //read the file
 
-                   outputStream = client.getOutputStream();
+                    outputStream = client.getOutputStream();
 
-                   outputStream.write(mybytearray, 0, mybytearray.length); //write file to the output stream byte by byte
-                   outputStream.flush();
-                   bufferedInputStream.close();
-                   outputStream.close();
-                   client.close();
-                   Log.e("shareSession", "all good");
+                    outputStream.write(mybytearray, 0, mybytearray.length); //write file to the output stream byte by byte
+                    outputStream.flush();
+                    bufferedInputStream.close();
+                    outputStream.close();
+                    client.close();
+                    Log.e("shareSession", "all good");
 
-               } catch (Exception e) {
-                   e.printStackTrace();
-               }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         }.start();
     }
