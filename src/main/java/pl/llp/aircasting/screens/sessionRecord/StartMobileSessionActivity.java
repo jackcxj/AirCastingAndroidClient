@@ -157,31 +157,36 @@ public class StartMobileSessionActivity extends DialogActivity implements View.O
     private void startSession() {
 //        while (true) {
 
-            startMobileSession();
+        startMobileSession();
 
-            new Handler().postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    session = currentSessionManager.getCurrentSession();
+//            new Handler().postDelayed(new Runnable() {
+//                @Override
+//                public void run() {
+        session = currentSessionManager.getCurrentSession();
 //                        dashboardChartManager.stop();
-                    locationHelper.stopLocationUpdates();
-                    stopMobileAirCasting(session);
-                    Log.e("stopAirCasting", "all good");
+        locationHelper.stopLocationUpdates();
+//                    stopMobileAirCasting(session);
+        Log.e("stopAirCasting", "all good");
 
 //                        Intent intent = new Intent(StartMobileSessionActivity.this, SessionsActivity.class);
 //                        //设置传递键值对
 //                        intent.putExtra("finish", "ok");
 //                        startActivity(intent);
 
-                }
-            }, 4000);
+//                }
+//            }, 4000);
 
-            new Handler().postDelayed(new Runnable() {
-                //                Runnable networkTask = new Runnable() {
-                @Override
-                public void run() {
+//            new Handler().postDelayed(new Runnable() {
+        //                Runnable networkTask = new Runnable() {
+//                @Override
+//                public void run() {
+        new Thread() {
+            @Override
+            public void run() {
+                while (currentSessionManager.isSessionRecording()) {
                     Log.e("loadSession", "all good");
                     try {
+                        Thread.sleep(4000);
 //                        Uri uri = prepareCSV(StartMobileSessionActivity.this, session);
                         File file = prepareCSV(StartMobileSessionActivity.this, session);
 //                        prepareAndShare();
@@ -191,8 +196,11 @@ public class StartMobileSessionActivity extends DialogActivity implements View.O
                         e.printStackTrace();
                     }
                 }
-            }, 4100);
-        }
+            }
+        }.start();
+//                }
+//            }, 4100);
+    }
 //    }
 
     private void uploadFile(final File file) {
