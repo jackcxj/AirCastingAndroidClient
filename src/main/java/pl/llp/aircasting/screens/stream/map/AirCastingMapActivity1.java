@@ -55,6 +55,7 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.AppCompatCallback;
 import android.support.v7.app.AppCompatDelegate;
 import android.support.v7.view.ActionMode;
@@ -176,10 +177,18 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
     private static final int ACTION_CENTER = 2;
     private int mRequestedAction;
 
+    //heatmap
+    private boolean heatMapVisible = false;
+    @Inject HeatMapOverlay heatMapOverlay;
+    public DrawerLayout drawerLayout;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        drawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
+
         final Injector injector = getInjector();
         eventManager = injector.getInstance(EventManager.class);
         scope = injector.getInstance(ContextScope.class);
@@ -401,6 +410,12 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
             return true;
         }
 
+        inflater.inflate(R.menu.toolbar_crowd_map_toggle, menu);
+
+        if (heatMapVisible) {
+            menu.getItem(menu.size() - 1).setIcon(R.drawable.toolbar_crowd_map_icon_active);
+        }
+
         return true;
     }
 
@@ -425,10 +440,24 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
                 Intents.makeANote(this);
                 break;
             case R.id.toggle_heat_map_button:
-//                toggleHeatMapVisibility(menuItem);
+                toggleHeatMapVisibility(menuItem);
                 break;
         }
         return true;
+    }
+
+    private void toggleHeatMapVisibility(MenuItem menuItem) {
+        if (heatMapVisible) {
+            heatMapVisible = false;
+//             mapView.getOverlays().remove(heatMapOverlay);
+            mapView.invalidate();
+            menuItem.setIcon(R.drawable.toolbar_crowd_map_icon_inactive);
+        } else {
+            heatMapVisible = true;
+//            mapView.getOverlays().add(0, heatMapOverlay);
+            mapView.invalidate();
+            menuItem.setIcon(R.drawable.toolbar_crowd_map_icon_active);
+        }
     }
 
 
