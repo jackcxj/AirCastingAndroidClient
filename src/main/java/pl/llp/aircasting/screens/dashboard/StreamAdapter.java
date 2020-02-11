@@ -1,37 +1,43 @@
 package pl.llp.aircasting.screens.dashboard;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
+import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.SimpleAdapter;
+
 import com.google.common.collect.ComparisonChain;
+import com.google.common.eventbus.EventBus;
+import com.google.common.eventbus.Subscribe;
+
+import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
 import pl.llp.aircasting.Intents;
 import pl.llp.aircasting.R;
 import pl.llp.aircasting.event.sensor.SensorEvent;
+import pl.llp.aircasting.event.session.SessionStoppedEvent;
+import pl.llp.aircasting.event.session.ToggleSessionReorderEvent;
+import pl.llp.aircasting.model.Sensor;
+import pl.llp.aircasting.model.internal.SensorName;
 import pl.llp.aircasting.screens.common.ApplicationState;
+import pl.llp.aircasting.screens.common.helpers.NoOp;
 import pl.llp.aircasting.screens.common.helpers.ResourceHelper;
 import pl.llp.aircasting.screens.common.sessionState.CurrentSessionSensorManager;
-import pl.llp.aircasting.screens.common.helpers.NoOp;
 import pl.llp.aircasting.screens.common.sessionState.SessionDataAccessor;
 import pl.llp.aircasting.screens.common.sessionState.SessionState;
 import pl.llp.aircasting.screens.common.sessionState.ViewingSessionsSensorManager;
-import pl.llp.aircasting.event.session.SessionStoppedEvent;
-import pl.llp.aircasting.event.session.ToggleSessionReorderEvent;
-import pl.llp.aircasting.model.*;
-
-import android.app.AlertDialog;
-import android.content.DialogInterface;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.SimpleAdapter;
-import com.google.common.eventbus.EventBus;
-import com.google.common.eventbus.Subscribe;
-import org.jetbrains.annotations.Nullable;
-import pl.llp.aircasting.model.internal.SensorName;
 import pl.llp.aircasting.util.Constants;
-
-import java.util.*;
-import java.util.List;
 
 import static com.google.common.collect.Maps.newHashMap;
 import static java.util.Collections.sort;
@@ -52,7 +58,8 @@ public class StreamAdapter extends SimpleAdapter {
     };
 
     private static final int[] TO = new int[]{
-            R.id.quantity, R.id.sensor_name
+//            R.id.quantity,
+            R.id.sensor_name
     };
 
     private final Comparator<Map<String, Object>> comparator = new Comparator<Map<String, Object>>() {

@@ -1,48 +1,9 @@
 package pl.llp.aircasting.screens.stream.map;
 
-import pl.llp.aircasting.Intents;
-import pl.llp.aircasting.R;
-import pl.llp.aircasting.event.measurements.MobileMeasurementEvent;
-import pl.llp.aircasting.event.sensor.AudioReaderErrorEvent;
-import pl.llp.aircasting.event.sensor.FixedSensorEvent;
-import pl.llp.aircasting.event.sensor.SensorConnectedEvent;
-import pl.llp.aircasting.event.sensor.SensorEvent;
-import pl.llp.aircasting.event.sensor.ThresholdSetEvent;
-import pl.llp.aircasting.event.session.VisibleSessionUpdatedEvent;
-import pl.llp.aircasting.event.ui.VisibleStreamUpdatedEvent;
-import pl.llp.aircasting.model.Measurement;
-import pl.llp.aircasting.screens.common.ApplicationState;
-import pl.llp.aircasting.screens.common.ToastHelper;
-import pl.llp.aircasting.screens.common.ToggleAircastingManager;
-import pl.llp.aircasting.screens.common.ToggleAircastingManagerFactory;
-import pl.llp.aircasting.screens.common.base.SimpleProgressTask;
-import pl.llp.aircasting.screens.common.helpers.LocationHelper;
-import pl.llp.aircasting.screens.common.helpers.NavigationDrawerHelper;
-import pl.llp.aircasting.screens.common.helpers.ResourceHelper;
-import pl.llp.aircasting.screens.common.helpers.SelectSensorHelper;
-import pl.llp.aircasting.screens.common.helpers.SettingsHelper;
-import pl.llp.aircasting.screens.common.sessionState.CurrentSessionManager;
-import pl.llp.aircasting.screens.common.sessionState.SessionDataAccessor;
-import pl.llp.aircasting.screens.common.sessionState.ViewingSessionsManager;
-import pl.llp.aircasting.screens.common.sessionState.VisibleSession;
-import pl.llp.aircasting.screens.stream.GaugeHelper;
-import pl.llp.aircasting.screens.stream.MeasurementPresenter;
-import pl.llp.aircasting.screens.stream.TopBarHelper;
-import pl.llp.aircasting.screens.stream.base.AirCastingBaseActivity;
-import pl.llp.aircasting.sessionSync.SyncBroadcastReceiver;
-import pl.llp.aircasting.storage.UnfinishedSessionChecker;
-import roboguice.activity.event.OnCreateEvent;
-import roboguice.activity.event.OnResumeEvent;
-import roboguice.activity.event.OnStartEvent;
-import roboguice.application.RoboApplication;
-import roboguice.event.EventManager;
-import roboguice.inject.ContextScope;
-import roboguice.inject.InjectView;
-import roboguice.inject.InjectorProvider;
-
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Location;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -55,6 +16,7 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.AppCompatCallback;
 import android.support.v7.app.AppCompatDelegate;
 import android.support.v7.view.ActionMode;
@@ -67,8 +29,8 @@ import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
-
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -79,28 +41,71 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.gms.location.LocationListener;
-import com.google.android.maps.GeoPoint;
-import com.google.android.maps.MapController;
+import com.google.android.gms.maps.model.TileOverlay;
+import com.google.android.gms.maps.model.TileOverlayOptions;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
+import com.google.maps.android.heatmaps.Gradient;
+import com.google.maps.android.heatmaps.HeatmapTileProvider;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static pl.llp.aircasting.Intents.startSensors;
-import static pl.llp.aircasting.screens.stream.map.LocationConversionHelper.boundingBox;
-import static pl.llp.aircasting.screens.stream.map.LocationConversionHelper.geoPoint;
-import static pl.llp.aircasting.screens.stream.map.MapIdleDetector.detectMapIdle;
+import pl.llp.aircasting.Intents;
+import pl.llp.aircasting.R;
+import pl.llp.aircasting.event.measurements.MobileMeasurementEvent;
+import pl.llp.aircasting.event.sensor.AudioReaderErrorEvent;
+import pl.llp.aircasting.event.sensor.FixedSensorEvent;
+import pl.llp.aircasting.event.sensor.SensorConnectedEvent;
+import pl.llp.aircasting.event.sensor.SensorEvent;
+import pl.llp.aircasting.event.sensor.ThresholdSetEvent;
+import pl.llp.aircasting.event.session.VisibleSessionUpdatedEvent;
+import pl.llp.aircasting.event.ui.VisibleStreamUpdatedEvent;
+import pl.llp.aircasting.model.internal.Region;
+import pl.llp.aircasting.screens.common.ApplicationState;
+import pl.llp.aircasting.screens.common.ToastHelper;
+import pl.llp.aircasting.screens.common.ToggleAircastingManager;
+import pl.llp.aircasting.screens.common.ToggleAircastingManagerFactory;
+import pl.llp.aircasting.screens.common.helpers.LocationHelper;
+import pl.llp.aircasting.screens.common.helpers.NavigationDrawerHelper;
+import pl.llp.aircasting.screens.common.helpers.ResourceHelper;
+import pl.llp.aircasting.screens.common.helpers.SettingsHelper;
+import pl.llp.aircasting.screens.common.sessionState.CurrentSessionManager;
+import pl.llp.aircasting.screens.common.sessionState.SessionDataAccessor;
+import pl.llp.aircasting.screens.common.sessionState.ViewingSessionsManager;
+import pl.llp.aircasting.screens.common.sessionState.VisibleSession;
+import pl.llp.aircasting.screens.stream.GaugeHelper;
+import pl.llp.aircasting.screens.stream.MeasurementPresenter;
+import pl.llp.aircasting.screens.stream.TopBarHelper;
+import pl.llp.aircasting.sessionSync.SyncBroadcastReceiver;
+import pl.llp.aircasting.storage.UnfinishedSessionChecker;
+import roboguice.activity.event.OnCreateEvent;
+import roboguice.activity.event.OnResumeEvent;
+import roboguice.application.RoboApplication;
+import roboguice.event.EventManager;
+import roboguice.inject.ContextScope;
+import roboguice.inject.InjectorProvider;
 
+import static pl.llp.aircasting.Intents.startSensors;
 
 public class AirCastingMapActivity1 extends FragmentActivity implements
         OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
         LocationListener, AppCompatCallback, InjectorProvider, View.OnClickListener, LocationHelper.LocationSettingsListener {
+
+
+
     // 添加导航栏和顶部
     public AppCompatDelegate delegate;
     public Toolbar toolbar;
@@ -176,10 +181,99 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
     private static final int ACTION_CENTER = 2;
     private int mRequestedAction;
 
+    //heatmap
+    private boolean heatMapVisible = false;
+    @Inject HeatMapOverlay heatMapOverlay;
+    public DrawerLayout drawerLayout;
+    private TileOverlay mOverlay;
+    private HeatmapTileProvider mProvider;
+    @Inject
+    SoundHelper soundHelper;
+
+    private Iterable<Region> regions;
+
+    public void setRegions(Iterable<Region> regions) {
+        this.regions = regions;
+    }
+
+    private void addHeatMap() {
+
+//        Projection projection = view.getProjection();
+//
+//        Sensor sensor = visibleSession.getSensor();
+//        for (Region region : regions) {
+//            double value = region.getValue();
+//
+//            if (soundHelper.shouldDisplay(sensor, value)) {
+//                int color = resourceHelper.getColorAbsolute(sensor, value);
+//
+////                paint.setColor(color);
+////                paint.setAlpha(ALPHA);
+//
+//                GeoPoint southWest = geoPoint(region.getSouth(), region.getWest());
+//                GeoPoint northEast = geoPoint(region.getNorth(), region.getEast());
+//                Point bottomLeft = projection.toPixels(southWest, null);
+//                Point topRight = projection.toPixels(northEast, null);
+
+//                canvas.drawRect(bottomLeft.x, topRight.y, topRight.x, bottomLeft.y, paint);
+//            }
+//        }
+
+        List<LatLng> list = null;
+
+        // Get the data: latitude/longitude positions of police stations.
+        try {
+            list = readItems(R.raw.police_stations);
+        } catch (JSONException e) {
+            Toast.makeText(this, "Problem reading list of locations.", Toast.LENGTH_LONG).show();
+        }
+
+        // Create a heat map tile provider, passing it the latlngs of the police stations.
+
+        // Add a tile overlay to the map, using the heat map tile provider.
+
+        int[] colors = {
+                Color.rgb(102, 225, 0), // green
+                Color.rgb(255, 0, 0)    // red
+        };
+
+        float[] startPoints = {0.2f, 0.5f};
+
+        Gradient gradient = new Gradient(colors, startPoints);
+
+// Create the tile provider.
+        mProvider = new HeatmapTileProvider.Builder()
+                .data(list)
+                .gradient(gradient)
+                .build();
+
+// Add the tile overlay to the map.
+        mOverlay = mMap.addTileOverlay(new TileOverlayOptions().tileProvider(mProvider));
+
+    }
+
+
+    private ArrayList<LatLng> readItems(int resource) throws JSONException {
+        ArrayList<LatLng> list = new ArrayList<LatLng>();
+        InputStream inputStream = getResources().openRawResource(resource);
+        String json = new Scanner(inputStream).useDelimiter("\\A").next();
+        JSONArray array = new JSONArray(json);
+        for (int i = 0; i < array.length(); i++) {
+            JSONObject object = array.getJSONObject(i);
+            double lat = object.getDouble("lat");
+            double lng = object.getDouble("lng");
+            list.add(new LatLng(lat, lng));
+        }
+        return list;
+    }
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        drawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
+
         final Injector injector = getInjector();
         eventManager = injector.getInstance(EventManager.class);
         scope = injector.getInstance(ContextScope.class);
@@ -401,6 +495,12 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
             return true;
         }
 
+        inflater.inflate(R.menu.toolbar_crowd_map_toggle, menu);
+
+        if (heatMapVisible) {
+            menu.getItem(menu.size() - 1).setIcon(R.drawable.toolbar_crowd_map_icon_active);
+        }
+
         return true;
     }
 
@@ -425,10 +525,29 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
                 Intents.makeANote(this);
                 break;
             case R.id.toggle_heat_map_button:
-//                toggleHeatMapVisibility(menuItem);
+                toggleHeatMapVisibility(menuItem);
                 break;
         }
         return true;
+    }
+
+    private void toggleHeatMapVisibility(MenuItem menuItem) {
+        if (heatMapVisible) {
+            heatMapVisible = false;
+//             mapView.getOverlays().remove(heatMapOverlay);
+            mOverlay.remove();
+            mOverlay.clearTileCache();
+            mapView.invalidate();
+
+            menuItem.setIcon(R.drawable.toolbar_crowd_map_icon_inactive);
+        } else {
+            heatMapVisible = true;
+//            mapView.getOverlays().add(0, heatMapOverlay);
+            addHeatMap();
+            mapView.invalidate();
+            menuItem.setIcon(R.drawable.toolbar_crowd_map_icon_active);
+
+        }
     }
 
 
