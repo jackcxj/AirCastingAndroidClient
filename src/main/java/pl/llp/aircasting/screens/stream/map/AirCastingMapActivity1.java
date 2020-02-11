@@ -1,4 +1,5 @@
 package pl.llp.aircasting.screens.stream.map;
+
 import pl.llp.aircasting.Intents;
 import pl.llp.aircasting.R;
 import pl.llp.aircasting.event.measurements.MobileMeasurementEvent;
@@ -15,8 +16,10 @@ import pl.llp.aircasting.screens.common.ToastHelper;
 import pl.llp.aircasting.screens.common.ToggleAircastingManager;
 import pl.llp.aircasting.screens.common.ToggleAircastingManagerFactory;
 import pl.llp.aircasting.screens.common.base.SimpleProgressTask;
+import pl.llp.aircasting.screens.common.helpers.LocationHelper;
 import pl.llp.aircasting.screens.common.helpers.NavigationDrawerHelper;
 import pl.llp.aircasting.screens.common.helpers.ResourceHelper;
+import pl.llp.aircasting.screens.common.helpers.SelectSensorHelper;
 import pl.llp.aircasting.screens.common.helpers.SettingsHelper;
 import pl.llp.aircasting.screens.common.sessionState.CurrentSessionManager;
 import pl.llp.aircasting.screens.common.sessionState.SessionDataAccessor;
@@ -56,6 +59,9 @@ import android.support.v7.app.AppCompatCallback;
 import android.support.v7.app.AppCompatDelegate;
 import android.support.v7.view.ActionMode;
 import android.support.v7.widget.Toolbar;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
@@ -74,6 +80,8 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.location.LocationListener;
+import com.google.android.maps.GeoPoint;
+import com.google.android.maps.MapController;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.google.inject.Inject;
@@ -84,6 +92,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static pl.llp.aircasting.Intents.startSensors;
 import static pl.llp.aircasting.screens.stream.map.LocationConversionHelper.boundingBox;
+import static pl.llp.aircasting.screens.stream.map.LocationConversionHelper.geoPoint;
 import static pl.llp.aircasting.screens.stream.map.MapIdleDetector.detectMapIdle;
 
 
@@ -91,11 +100,12 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
         OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
-        LocationListener, AppCompatCallback, InjectorProvider {
+        LocationListener, AppCompatCallback, InjectorProvider, View.OnClickListener, LocationHelper.LocationSettingsListener {
     // 添加导航栏和顶部
     public AppCompatDelegate delegate;
     public Toolbar toolbar;
-    @Inject NavigationDrawerHelper navigationDrawerHelper;
+    @Inject
+    NavigationDrawerHelper navigationDrawerHelper;
     protected EventManager eventManager;
     protected ContextScope scope;
 
@@ -106,28 +116,38 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
     private Location lastLocation;
     private Marker currentUserLocationMarker;
     private static final int Request_User_Location_Code = 99;
-//    private com.google.android.gms.maps.SupportMapFragment mapFragment;
+    private View mapView;
 
     // 添加数据
     private ToggleAircastingManager toggleAircastingManager;
     private boolean initialized = false;
-    @Inject ToggleAircastingManagerFactory aircastingHelperFactory;
+    @Inject
+    ToggleAircastingManagerFactory aircastingHelperFactory;
     @Inject
     SyncBroadcastReceiver syncBroadcastReceiver;
     SyncBroadcastReceiver registeredReceiver;
-    @Inject EventBus eventBus;
-    @Inject public CurrentSessionManager currentSessionManager;
-    @Inject ApplicationState state;
+    @Inject
+    EventBus eventBus;
+    @Inject
+    public CurrentSessionManager currentSessionManager;
+    @Inject
+    ApplicationState state;
     private long lastChecked = 0;
     public static final long DELTA = TimeUnit.SECONDS.toMillis(15);
-    @Inject UnfinishedSessionChecker checker;
-    @Inject ViewingSessionsManager viewingSessionsManager;
-    @Inject public Context context;
+    @Inject
+    UnfinishedSessionChecker checker;
+    @Inject
+    ViewingSessionsManager viewingSessionsManager;
+    @Inject
+    public Context context;
     protected View mGauges;
     protected GaugeHelper mGaugeHelper;
-    @Inject public ResourceHelper resourceHelper;
-    @Inject public VisibleSession visibleSession;
-    @Inject SessionDataAccessor sessionData;
+    @Inject
+    public ResourceHelper resourceHelper;
+    @Inject
+    public VisibleSession visibleSession;
+    @Inject
+    SessionDataAccessor sessionData;
     private Handler handler = new Handler();
 
     private Thread pollServerTask = new Thread(new Runnable() {
@@ -139,11 +159,22 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
         }
     });
     final AtomicBoolean noUpdateInProgress = new AtomicBoolean(true);
-    @Inject public SettingsHelper settingsHelper;
-    @Inject TopBarHelper topBarHelper;
-    @InjectView(R.id.top_bar) View topBar;
-    @Inject ConnectivityManager connectivityManager;
-    @Inject public MeasurementPresenter measurementPresenter;
+    @Inject
+    public SettingsHelper settingsHelper;
+    @Inject
+    TopBarHelper topBarHelper;
+    private View topBar;
+    @Inject
+    ConnectivityManager connectivityManager;
+    @Inject
+    public MeasurementPresenter measurementPresenter;
+    @Inject
+    public LocationHelper locationHelper;
+
+    //导航栏右侧
+    private static final int ACTION_TOGGLE = 1;
+    private static final int ACTION_CENTER = 2;
+    private int mRequestedAction;
 
 
     @Override
@@ -168,7 +199,7 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map_id);
         mapFragment.getMapAsync(this);
-        View mapView = mapFragment.getView();
+        mapView = mapFragment.getView();
         if (mapView != null &&
                 mapView.findViewById(1) != null) {
             // Get the button view
@@ -201,10 +232,12 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
     }
 
     @Override
-    public void onSupportActionModeStarted(ActionMode mode) { }
+    public void onSupportActionModeStarted(ActionMode mode) {
+    }
 
     @Override
-    public void onSupportActionModeFinished(ActionMode mode) { }
+    public void onSupportActionModeFinished(ActionMode mode) {
+    }
 
     @Override
     public ActionMode onWindowStartingSupportActionMode(ActionMode.Callback callback) {
@@ -245,7 +278,7 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
 
         updateGauges();
         updateKeepScreenOn();
-//        topBarHelper.updateTopBar(visibleSession.getSensor(), topBar);
+        topBarHelper.updateTopBar(visibleSession.getSensor(), topBar);
         Intents.startIOIO(context);
         Intents.startDatabaseWriterService(context);
 
@@ -304,6 +337,7 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
         if (!initialized) {
             mGauges = findViewById(R.id.gauge_container);
 
+            topBar = findViewById(R.id.top_bar);
             if (mGaugeHelper == null) {
                 mGaugeHelper = new GaugeHelper(this, mGauges, resourceHelper, visibleSession, sessionData);
             }
@@ -311,7 +345,7 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
 //            zoomOut.setOnClickListener(this);
 //            zoomIn.setOnClickListener(this);
 //            topBar.setOnClickListener(this);
-
+            topBar.setOnClickListener(this);
 //            mGauges.setOnClickListener(this);
 
             initialized = true;
@@ -351,6 +385,92 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
             ToastHelper.show(this, R.string.no_internet, Toast.LENGTH_SHORT);
         }
     }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        super.onPrepareOptionsMenu(menu);
+
+        MenuInflater inflater = getDelegate().getMenuInflater();
+
+        if (currentSessionManager.isSessionIdle()) {
+            inflater.inflate(R.menu.toolbar_start_recording, menu);
+        } else if (currentSessionManager.isSessionRecording()){
+            inflater.inflate(R.menu.toolbar_stop_recording, menu);
+            inflater.inflate(R.menu.toolbar_make_note, menu);
+        } else {
+            return true;
+        }
+
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem menuItem) {
+        super.onOptionsItemSelected(menuItem);
+
+        switch (menuItem.getItemId()) {
+            case R.id.toggle_aircasting:
+                mRequestedAction = ACTION_TOGGLE;
+
+                if (!settingsHelper.areMapsDisabled()) {
+                    if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                        locationHelper.checkLocationSettings(this);
+                    }
+                } else {
+                    toggleSessionRecording();
+                }
+
+                break;
+            case R.id.make_note:
+                Intents.makeANote(this);
+                break;
+            case R.id.toggle_heat_map_button:
+//                toggleHeatMapVisibility(menuItem);
+                break;
+        }
+        return true;
+    }
+
+
+    @Override
+    public void onLocationSettingsSatisfied() {
+        if (mRequestedAction == ACTION_TOGGLE) {
+            toggleSessionRecording();
+        } else if (mRequestedAction == ACTION_CENTER) {
+//            centerMap();
+        }
+    }
+
+    private void toggleSessionRecording() {
+        toggleAirCasting();
+
+        measurementPresenter.reset();
+//        traceOverlay.refresh(mapView);
+//        routeOverlay.clear();
+//        routeOverlay.invalidate();
+        mapView.invalidate();
+    }
+
+    public synchronized void toggleAirCasting() {
+        toggleAircastingManager.toggleAirCasting();
+        getDelegate().invalidateOptionsMenu();
+
+        measurementPresenter.reset();
+    }
+
+//    private void toggleHeatMapVisibility(MenuItem menuItem) {
+//        if (heatMapVisible) {
+//            heatMapVisible = false;
+//            mapView.getOverlays().remove(heatMapOverlay);
+//            mapView.invalidate();
+//            menuItem.setIcon(R.drawable.toolbar_crowd_map_icon_inactive);
+//        } else {
+//            heatMapVisible = true;
+//            mapView.getOverlays().add(0, heatMapOverlay);
+//            mapView.invalidate();
+//            menuItem.setIcon(R.drawable.toolbar_crowd_map_icon_active);
+//        }
+//    }
 
 //    @Override
 //    public void onViewUpdated() {
@@ -400,8 +520,7 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
     }
 
     @Subscribe
-    public void onEvent(ThresholdSetEvent event)
-    {
+    public void onEvent(ThresholdSetEvent event) {
         updateGauges();
     }
 
@@ -539,6 +658,20 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
     @Override
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
 
+    }
+
+    @Override
+    public void onClick(View view) {
+        switch (view.getId()) {
+            case R.id.top_bar:
+                Intents.thresholdsEditor(this, visibleSession.getSensor());
+                break;
+//            case R.id.gauge_container:
+//                showDialog(SelectSensorHelper.DIALOG_ID);
+//                break;
+            default:
+                break;
+        }
     }
 }
 
