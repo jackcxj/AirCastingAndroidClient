@@ -41,6 +41,8 @@ import android.app.Application;
 import android.location.Location;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
+import android.util.Log;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.eventbus.EventBus;
@@ -151,6 +153,7 @@ public class CurrentSessionManager {
             Measurement measurement = new Measurement(latitude, longitude, value, event.getMeasuredValue(), event.getDate());
 
             if (state.recording().isRecording()) {
+                Log.e("try to keep recording", "no way");
                 MeasurementStream stream = prepareStream(event);
                 tracker.addMeasurement(sensor, stream, measurement);
             } else {
@@ -226,10 +229,13 @@ public class CurrentSessionManager {
         state.recording().stopRecording();
         notificationHelper.hideRecordingNotification();
         eventBus.post(new SessionStoppedEvent(getCurrentSession()));
+        Log.e("Stop session", "that's ok");
     }
 
     public void finishSession(long sessionId, boolean shouldContribute) {
         synchronized (this) {
+            Log.e("Finish session", "that's ok");
+
             tracker.setContribute(sessionId, shouldContribute);
             tracker.complete(sessionId);
             Intents.triggerSync(applicationContext);

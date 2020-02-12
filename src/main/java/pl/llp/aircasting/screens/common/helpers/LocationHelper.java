@@ -72,7 +72,7 @@ public class LocationHelper {
         }
     };
 
-    public void checkLocationSettings(LocationSettingsListener locationSettingsListener) {
+    public void  checkLocationSettings(LocationSettingsListener locationSettingsListener) {
         checkLocationSettingsSatisfied(locationSettingsListener);
     }
 

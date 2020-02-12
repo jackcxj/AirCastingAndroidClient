@@ -47,6 +47,7 @@ import pl.llp.aircasting.storage.repository.SessionRepository;
 import android.app.Application;
 import android.app.Dialog;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.ListView;
 import android.widget.Toast;
@@ -120,7 +121,6 @@ public class SessionsActivity extends RoboListActivityWithProgress implements Ac
                 refreshList();
             }
         });
-
         getDelegate().onCreate(savedInstanceState);
         initToolbar("Sessions");
         initNavigationDrawer();
@@ -227,6 +227,7 @@ public class SessionsActivity extends RoboListActivityWithProgress implements Ac
                     ActivityCompat.requestPermissions(this, new String[]{ WRITE_EXTERNAL_STORAGE }, MY_PERMISSIONS_REQUEST_WRITE_STORAGE);
                 } else {
                     Intents.shareSession(this, sessionId);
+//                    Log.e("sessionid", ":"+ sessionId);
                 }
 
                 break;

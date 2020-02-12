@@ -1,5 +1,6 @@
 package pl.llp.aircasting.screens.dashboard;
 
+import android.util.Log;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
@@ -90,6 +91,8 @@ public class StreamViewHelper {
         Session session = sessionData.getSession(sessionId);
         TextView sessionTitle = (TextView) sessionTitleView.findViewById(R.id.session_title);
         LinearLayout sessionButtonsContainer = (LinearLayout) sessionTitleView.findViewById(R.id.session_reorder_buttons);
+
+//        Log.e("Session title", "test");
 
         sessionTitleView.setVisibility(View.VISIBLE);
         sessionTitle.setCompoundDrawablesWithIntrinsicBounds(session.getDrawable(), 0, 0, 0);

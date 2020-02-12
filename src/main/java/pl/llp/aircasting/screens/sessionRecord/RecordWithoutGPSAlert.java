@@ -26,26 +26,29 @@ public class RecordWithoutGPSAlert {
     }
 
     public void display() {
-        DialogInterface.OnClickListener dialogOnClickListener = new DialogInterface.OnClickListener() {
-
-            @Override
-            public void onClick(DialogInterface dialogInterface, int which) {
-                switch (which){
-                    case DialogInterface.BUTTON_POSITIVE:
-                        currentSessionManager.startMobileSession(sessionTitle, sessionTags, withoutLocation);
-                        activity.invalidateOptionsMenu();
-                        activity.finish();
-                        break;
-
-                    case DialogInterface.BUTTON_NEGATIVE:
-                        break;
-                }
-            }
-        };
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(activity);
-        builder.setMessage("Without location data you can't map your session or contribute it to the CrowdMap")
-                .setPositiveButton("Continue", dialogOnClickListener)
-                .setNegativeButton("Cancel", dialogOnClickListener).show();
+        currentSessionManager.startMobileSession(sessionTitle, sessionTags, withoutLocation);
+        activity.invalidateOptionsMenu();
+        activity.finish();
+//        DialogInterface.OnClickListener dialogOnClickListener = new DialogInterface.OnClickListener() {
+//
+//            @Override
+//            public void onClick(DialogInterface dialogInterface, int which) {
+//                switch (which){
+//                    case DialogInterface.BUTTON_POSITIVE:
+//                        currentSessionManager.startMobileSession(sessionTitle, sessionTags, withoutLocation);
+//                        activity.invalidateOptionsMenu();
+//                        activity.finish();
+//                        break;
+//
+//                    case DialogInterface.BUTTON_NEGATIVE:
+//                        break;
+//                }
+//            }
+//        };
+//
+//        AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+//        builder.setMessage("Without location data you can't map your session or contribute it to the CrowdMap")
+//                .setPositiveButton("Continue", dialogOnClickListener)
+//                .setNegativeButton("Cancel", dialogOnClickListener).show();
     }
 }

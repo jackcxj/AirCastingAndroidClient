@@ -1,5 +1,7 @@
 package pl.llp.aircasting.tracking;
 
+import android.util.Log;
+
 import pl.llp.aircasting.event.session.SessionStoppedEvent;
 import pl.llp.aircasting.screens.common.helpers.LocationHelper;
 import pl.llp.aircasting.screens.common.helpers.SettingsHelper;
@@ -83,6 +85,7 @@ public class ContinuousTracker {
     }
 
     public void addMeasurement(Sensor sensor, MeasurementStream stream, Measurement measurement) {
+//        Log.e("add measurement detail","yeah");
         sessionTracker.addMeasurement(sensor, stream, measurement);
     }
 
