@@ -1,21 +1,46 @@
 package pl.llp.aircasting.screens.common.base;
 
+import android.app.Activity;
 import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.os.Bundle;
+import android.support.v4.app.FragmentActivity;
 import android.support.v7.app.AppCompatCallback;
 import android.support.v7.app.AppCompatDelegate;
 import android.support.v7.view.ActionMode;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
+
+import com.google.android.maps.MapActivity;
 import com.google.inject.Inject;
+import com.google.inject.Injector;
+
 import pl.llp.aircasting.R;
 import pl.llp.aircasting.screens.common.helpers.NavigationDrawerHelper;
 import pl.llp.aircasting.screens.common.helpers.SettingsHelper;
 import pl.llp.aircasting.screens.userAccount.ProfileActivity;
 import pl.llp.aircasting.screens.userAccount.SignOutActivity;
 import roboguice.activity.RoboMapActivity;
+import roboguice.activity.event.OnActivityResultEvent;
+import roboguice.activity.event.OnConfigurationChangedEvent;
+import roboguice.activity.event.OnContentChangedEvent;
+import roboguice.activity.event.OnContentViewAvailableEvent;
+import roboguice.activity.event.OnCreateEvent;
+import roboguice.activity.event.OnDestroyEvent;
+import roboguice.activity.event.OnNewIntentEvent;
+import roboguice.activity.event.OnPauseEvent;
+import roboguice.activity.event.OnRestartEvent;
+import roboguice.activity.event.OnResumeEvent;
+import roboguice.activity.event.OnStartEvent;
+import roboguice.activity.event.OnStopEvent;
+import roboguice.application.RoboApplication;
+import roboguice.event.EventManager;
+import roboguice.inject.ContextScope;
+import roboguice.inject.InjectorProvider;
 
 /**
  * Created by IntelliJ IDEA.
@@ -23,7 +48,7 @@ import roboguice.activity.RoboMapActivity;
  * Date: 1/16/12
  * Time: 12:35 PM
  */
-public abstract class RoboMapActivityWithProgress extends RoboMapActivity implements ActivityWithProgress, AppCompatCallback, View.OnClickListener {
+public abstract class RoboMapActivityWithProgress extends MapActivity implements ActivityWithProgress, AppCompatCallback, View.OnClickListener, InjectorProvider {
     @Inject
     NavigationDrawerHelper navigationDrawerHelper;
     @Inject
@@ -34,6 +59,9 @@ public abstract class RoboMapActivityWithProgress extends RoboMapActivity implem
     private int progressStyle;
     private ProgressDialog dialog;
     private SimpleProgressTask task;
+
+    protected EventManager eventManager;
+    protected ContextScope scope;
 
     @Override
     public ProgressDialog showProgressDialog(int progressStyle, SimpleProgressTask task) {
@@ -52,7 +80,15 @@ public abstract class RoboMapActivityWithProgress extends RoboMapActivity implem
     }
 
     protected void onCreate(Bundle savedInstanceState) {
+
+        final Injector injector = getInjector();
+        eventManager = injector.getInstance(EventManager.class);
+        scope = injector.getInstance(ContextScope.class);
+        scope.enter(this);
+        injector.injectMembers(this);
         super.onCreate(savedInstanceState);
+        eventManager.fire(new OnCreateEvent(savedInstanceState));
+
         getDelegate().onCreate(savedInstanceState);
 
         Object instance = getLastNonConfigurationInstance();
@@ -79,10 +115,7 @@ public abstract class RoboMapActivityWithProgress extends RoboMapActivity implem
         navigationDrawerHelper.initNavigationDrawer(toolbar, this);
     }
 
-    @Override
-    public Object onRetainNonConfigurationInstance() {
-        return task;
-    }
+
 
     @Override
     public void hideProgressDialog() {
@@ -95,34 +128,12 @@ public abstract class RoboMapActivityWithProgress extends RoboMapActivity implem
     }
 
     @Override
-    public void onStart() {
-        super.onStart();
-        getDelegate().onStart();
-
-        navigationDrawerHelper.setDrawerHeader();
-    }
-
-    @Override
-    public void onStop() {
-        super.onStop();
-        getDelegate().onStop();
-
-        navigationDrawerHelper.removeHeader();
-    }
-
-    @Override
     public void onPostResume() {
         super.onPostResume();
         getDelegate().onPostResume();
 
         navigationDrawerHelper.removeHeader();
         navigationDrawerHelper.setDrawerHeader();
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        getDelegate().onDestroy();
     }
 
     public AppCompatDelegate getDelegate() {
@@ -158,4 +169,128 @@ public abstract class RoboMapActivityWithProgress extends RoboMapActivity implem
             startActivity(new Intent(this, ProfileActivity.class));
         }
     }
+
+    @Override
+    public void setContentView(int layoutResID) {
+        Log.e("setContentView","start");
+        super.setContentView(layoutResID);
+        Log.e("setContentView","end");
+        Log.e("injectViews","start");
+        scope.injectViews();
+        Log.e("injectViews","end");
+        eventManager.fire(new OnContentViewAvailableEvent());
+    }
+
+    @Override
+    public void setContentView(View view, ViewGroup.LayoutParams params) {
+        super.setContentView(view, params);
+        scope.injectViews();
+        eventManager.fire(new OnContentViewAvailableEvent());
+    }
+
+    @Override
+    public void setContentView(View view) {
+        super.setContentView(view);
+        scope.injectViews();
+        eventManager.fire(new OnContentViewAvailableEvent());
+    }
+
+    @Override
+    public Object onRetainNonConfigurationInstance() {
+        return task;
+    }
+
+    @Override
+    protected void onRestart() {
+        scope.enter(this);
+        super.onRestart();
+        eventManager.fire(new OnRestartEvent());
+    }
+
+    @Override
+    public void onStart() {
+        scope.enter(this);
+        super.onStart();
+        eventManager.fire(new OnStartEvent());
+        getDelegate().onStart();
+
+        navigationDrawerHelper.setDrawerHeader();
+    }
+
+    @Override
+    protected void onResume() {
+        scope.enter(this);
+        super.onResume();
+        eventManager.fire(new OnResumeEvent());
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        eventManager.fire(new OnPauseEvent());
+    }
+
+    @Override
+    public void onNewIntent( Intent intent ) {
+        super.onNewIntent(intent);
+        scope.enter(this);
+        eventManager.fire(new OnNewIntentEvent());
+    }
+
+    @Override
+    public void onStop() {
+        scope.enter(this);
+        try {
+            eventManager.fire(new OnStopEvent());
+        } finally {
+            scope.exit(this);
+            super.onStop();
+        }
+        getDelegate().onStop();
+
+        navigationDrawerHelper.removeHeader();
+    }
+
+    @Override
+    public void onDestroy() {
+        scope.enter(this);
+        try {
+            eventManager.fire(new OnDestroyEvent());
+        } finally {
+            eventManager.clear(this);
+            scope.exit(this);
+            scope.dispose(this);
+            super.onDestroy();
+        }
+        getDelegate().onDestroy();
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        final Configuration currentConfig = getResources().getConfiguration();
+        super.onConfigurationChanged(newConfig);
+        eventManager.fire(new OnConfigurationChangedEvent(currentConfig, newConfig));
+    }
+
+    public void onContentChanged() {
+        super.onContentChanged();
+        eventManager.fire(new OnContentChangedEvent());
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        scope.enter(this);
+        try {
+            eventManager.fire(new OnActivityResultEvent(requestCode, resultCode, data));
+        } finally {
+            scope.exit(this);
+        }
+    }
+
+    @Override
+    public Injector getInjector() {
+        return ((RoboApplication) getApplication()).getInjector();
+    }
+
 }

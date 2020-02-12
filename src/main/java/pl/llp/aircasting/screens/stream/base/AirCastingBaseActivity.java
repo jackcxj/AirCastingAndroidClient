@@ -105,7 +105,6 @@ public abstract class AirCastingBaseActivity extends RoboMapActivityWithProgress
         eventBus.unregister(this);
     }
 
-    @Override
     protected boolean isRouteDisplayed() {
         // The maps server needs to know if we are displaying any routes
         return false;

@@ -23,6 +23,7 @@ import android.app.ProgressDialog;
 import android.content.Context;
 import android.os.AsyncTask;
 import pl.llp.aircasting.R;
+import pl.llp.aircasting.screens.stream.map.AirCastingMapActivity1;
 
 /**
  * Created by IntelliJ IDEA.
