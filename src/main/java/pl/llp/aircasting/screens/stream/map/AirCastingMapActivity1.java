@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
+import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
@@ -21,6 +22,7 @@ import android.support.v7.app.AppCompatCallback;
 import android.support.v7.app.AppCompatDelegate;
 import android.support.v7.view.ActionMode;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -33,11 +35,9 @@ import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -55,6 +55,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.InputStream;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -66,12 +67,15 @@ import pl.llp.aircasting.R;
 import pl.llp.aircasting.event.measurements.MobileMeasurementEvent;
 import pl.llp.aircasting.event.sensor.AudioReaderErrorEvent;
 import pl.llp.aircasting.event.sensor.FixedSensorEvent;
+import pl.llp.aircasting.event.sensor.LocationEvent;
 import pl.llp.aircasting.event.sensor.SensorConnectedEvent;
 import pl.llp.aircasting.event.sensor.SensorEvent;
 import pl.llp.aircasting.event.sensor.ThresholdSetEvent;
 import pl.llp.aircasting.event.session.VisibleSessionUpdatedEvent;
 import pl.llp.aircasting.event.ui.VisibleStreamUpdatedEvent;
-import pl.llp.aircasting.model.internal.Region;
+import pl.llp.aircasting.model.Sensor;
+import pl.llp.aircasting.model.Session;
+import pl.llp.aircasting.model.internal.MeasurementLevel;
 import pl.llp.aircasting.screens.common.ApplicationState;
 import pl.llp.aircasting.screens.common.ToastHelper;
 import pl.llp.aircasting.screens.common.ToggleAircastingManager;
@@ -87,6 +91,7 @@ import pl.llp.aircasting.screens.common.sessionState.VisibleSession;
 import pl.llp.aircasting.screens.stream.GaugeHelper;
 import pl.llp.aircasting.screens.stream.MeasurementPresenter;
 import pl.llp.aircasting.screens.stream.TopBarHelper;
+import pl.llp.aircasting.sensor.common.ThresholdsHolder;
 import pl.llp.aircasting.sessionSync.SyncBroadcastReceiver;
 import pl.llp.aircasting.storage.UnfinishedSessionChecker;
 import roboguice.activity.event.OnCreateEvent;
@@ -96,14 +101,15 @@ import roboguice.event.EventManager;
 import roboguice.inject.ContextScope;
 import roboguice.inject.InjectorProvider;
 
+import static com.google.android.gms.common.api.GoogleApiClient.*;
 import static pl.llp.aircasting.Intents.startSensors;
 
 public class AirCastingMapActivity1 extends FragmentActivity implements
         OnMapReadyCallback,
-        GoogleApiClient.ConnectionCallbacks,
-        GoogleApiClient.OnConnectionFailedListener,
-        LocationListener, AppCompatCallback, InjectorProvider, View.OnClickListener, LocationHelper.LocationSettingsListener {
-
+        ConnectionCallbacks,
+        OnConnectionFailedListener,
+        LocationListener,
+        AppCompatCallback, InjectorProvider, View.OnClickListener, LocationHelper.LocationSettingsListener {
 
 
     // 添加导航栏和顶部
@@ -172,7 +178,7 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
     @Inject
     ConnectivityManager connectivityManager;
     @Inject
-    public MeasurementPresenter measurementPresenter;
+    MeasurementPresenter measurementPresenter;
     @Inject
     public LocationHelper locationHelper;
 
@@ -183,41 +189,32 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
 
     //heatmap
     private boolean heatMapVisible = false;
-    @Inject HeatMapOverlay heatMapOverlay;
+    @Inject
+    HeatMapOverlay heatMapOverlay;
     public DrawerLayout drawerLayout;
     private TileOverlay mOverlay;
     private HeatmapTileProvider mProvider;
+
+    //tracelap
+    LocationManager locationManager;
+    private Session session;
+    private LatLng currentLatLng;
+    private Location mLastLocation;
+    /**
+     * 异常距离，如果超过这个距离，则说明移动距离异常,避免定位抖动造成的误差
+     */
+    private static final int DISTANCE_ERROR = 20;
+    private SessionDataAccessor mSessionData;
+    private VisibleSession mVisibleSession;
+    private Sensor mSensor;
+    private double nowData;
     @Inject
-    SoundHelper soundHelper;
+    ThresholdsHolder thresholds;
+    private int very_low, low, mid, high, very_high;
+    private int[] colors;
 
-    private Iterable<Region> regions;
-
-    public void setRegions(Iterable<Region> regions) {
-        this.regions = regions;
-    }
 
     private void addHeatMap() {
-
-//        Projection projection = view.getProjection();
-//
-//        Sensor sensor = visibleSession.getSensor();
-//        for (Region region : regions) {
-//            double value = region.getValue();
-//
-//            if (soundHelper.shouldDisplay(sensor, value)) {
-//                int color = resourceHelper.getColorAbsolute(sensor, value);
-//
-////                paint.setColor(color);
-////                paint.setAlpha(ALPHA);
-//
-//                GeoPoint southWest = geoPoint(region.getSouth(), region.getWest());
-//                GeoPoint northEast = geoPoint(region.getNorth(), region.getEast());
-//                Point bottomLeft = projection.toPixels(southWest, null);
-//                Point topRight = projection.toPixels(northEast, null);
-
-//                canvas.drawRect(bottomLeft.x, topRight.y, topRight.x, bottomLeft.y, paint);
-//            }
-//        }
 
         List<LatLng> list = null;
 
@@ -293,6 +290,7 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map_id);
         mapFragment.getMapAsync(this);
+
         mapView = mapFragment.getView();
         if (mapView != null &&
                 mapView.findViewById(1) != null) {
@@ -306,6 +304,7 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
             layoutParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM, RelativeLayout.TRUE);
             layoutParams.setMargins(0, 0, 30, 30);
         }
+
         initToolbar("Map");
         initNavigationDrawer();
     }
@@ -387,6 +386,7 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
 //        traceOverlay.refresh(mapView);
 
         checkConnection();
+
 
 //        updater = new AirCastingMapActivity.HeatMapUpdater();
 //        heatMapDetector = detectMapIdle(mapView, HEAT_MAP_UPDATE_TIMEOUT, updater);
@@ -488,7 +488,7 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
 
         if (currentSessionManager.isSessionIdle()) {
             inflater.inflate(R.menu.toolbar_start_recording, menu);
-        } else if (currentSessionManager.isSessionRecording()){
+        } else if (currentSessionManager.isSessionRecording()) {
             inflater.inflate(R.menu.toolbar_stop_recording, menu);
             inflater.inflate(R.menu.toolbar_make_note, menu);
         } else {
@@ -677,14 +677,128 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
-        buildGoogleApiClient();
+        initGoogle();
         mMap.setMyLocationEnabled(true);
+
+//        Location myLocation = mMap.getMyLocation();
+//        locationHelper.updateLocation(myLocation);
+
         // Add a marker in Sydney and move the camera
 //        LatLng sydney = new LatLng(-34, 151);
+//        locationHelper.updateLocation(sydney);
 //        mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
 //        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
     }
 
+    @Override
+    public void onLocationChanged(Location location) {
+//        locationHelper.updateLocation(location);
+        double latitude = location.getLatitude();
+        double longitude = location.getLongitude();
+
+        //首次定位时设置当前经纬度
+        if (currentLatLng == null) {
+            currentLatLng = new LatLng(latitude, longitude);
+        }
+        LatLng lastLatLng = currentLatLng;
+        currentLatLng = new LatLng(location.getLatitude(), location.getLongitude());
+        //计算当前定位与前一次定位的距离，如果距离异常或是距离为0,则不做任何操作
+        double movedDistance = CalculationByDistance(lastLatLng, currentLatLng);
+        if (movedDistance > DISTANCE_ERROR || movedDistance <= 0.002) {
+            return;
+        } else if (currentSessionManager.isSessionRecording()) {
+//            Log.e("latitude add point", ": " + latitude);
+//            Log.e("longitude add point", ": " + longitude);
+            locationHelper.updateLocation(location);
+            addPoint(currentLatLng);
+        }
+    }
+
+    private double getNowData() {
+        mSessionData = mGaugeHelper.getsessionData();
+        mVisibleSession = mGaugeHelper.getVisibleSession();
+        mSensor = mVisibleSession.getSensor();
+        double nowData = mSessionData.getNow(mSensor, mVisibleSession.getVisibleSessionId());
+
+        very_low = thresholds.getValue(mSensor, MeasurementLevel.VERY_LOW);
+        low = thresholds.getValue(mSensor, MeasurementLevel.LOW);
+        mid = thresholds.getValue(mSensor, MeasurementLevel.MID);
+        high = thresholds.getValue(mSensor, MeasurementLevel.HIGH);
+        very_high = thresholds.getValue(mSensor, MeasurementLevel.VERY_HIGH);
+        return nowData;
+    }
+
+    private void addPoint(LatLng latLng) {
+        Log.e("add point", "all good");
+        List<LatLng> list = new ArrayList<LatLng>();
+        list.add(latLng);
+        int temp = (int) Math.round(getNowData());
+//        Log.e("now data", ": " + temp);
+//
+//        Log.e("new mid", ": " + mid);
+//        Log.e("new high", ": " + high);
+
+        if (very_low <= temp && temp <= very_high) {
+            if (very_low <= temp && temp < low) {
+                colors = new int[]{
+                        Color.rgb(101, 198, 138) // green
+                };
+            } else if (low <= temp && temp < mid) {
+                colors = new int[]{
+                        Color.rgb(254, 230, 101) // yellow
+                };
+            } else if (mid <= temp && temp < high) {
+                colors = new int[]{
+                        Color.rgb(254, 176, 101) // orange
+                };
+            } else if (high <= temp && temp < very_high) {
+                colors = new int[]{
+                        Color.rgb(254, 100, 101) // orange
+                };
+            }
+        } else {
+            return;
+        }
+
+        float[] startPoints = {0.2f};
+
+        Gradient gradient = new Gradient(colors, startPoints);
+
+// Create the tile provider.
+        mProvider = new HeatmapTileProvider.Builder()
+                .data(list)
+                .gradient(gradient)
+                .build();
+
+// Add the tile overlay to the map.
+        mOverlay = mMap.addTileOverlay(new TileOverlayOptions().tileProvider(mProvider));
+
+    }
+
+    public double CalculationByDistance(LatLng StartP, LatLng EndP) {
+        int Radius = 6371;// radius of earth in Km
+        double lat1 = StartP.latitude;
+        double lat2 = EndP.latitude;
+        double lon1 = StartP.longitude;
+        double lon2 = EndP.longitude;
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1))
+                * Math.cos(Math.toRadians(lat2)) * Math.sin(dLon / 2)
+                * Math.sin(dLon / 2);
+        double c = 2 * Math.asin(Math.sqrt(a));
+        double valueResult = Radius * c;
+        double km = valueResult / 1;
+        DecimalFormat newFormat = new DecimalFormat("####");
+        int kmInDec = Integer.valueOf(newFormat.format(km));
+        double meter = valueResult % 1000;
+        int meterInDec = Integer.valueOf(newFormat.format(meter));
+        Log.i("Radius Value", "" + valueResult + "   KM  " + kmInDec
+                + " Meter   " + meterInDec);
+
+        return Radius * c;
+    }
 
     public boolean checkUserLocationPermission() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -707,7 +821,7 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
 
                     if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                         if (googleApiClient == null) {
-                            buildGoogleApiClient();
+                            initGoogle();
                         }
                         mMap.setMyLocationEnabled(true);
                     }
@@ -717,66 +831,61 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
         }
     }
 
-    protected synchronized void buildGoogleApiClient() {
+    void initGoogle() {
 
-        googleApiClient = new GoogleApiClient.Builder(this)
+        googleApiClient = new Builder(this)
+                .enableAutoManage(this /* FragmentActivity */,
+                        this /* OnConnectionFailedListener */)
                 .addConnectionCallbacks(this)
-                .addOnConnectionFailedListener(this)
                 .addApi(LocationServices.API)
                 .build();
 
         googleApiClient.connect();
     }
 
+//
+//    @Override
+//    public void onConnected(@Nullable Bundle bundle) {
+//
+//        locationHelper.createLocationRequest();
+////        locationRequest = new LocationRequest();
+////        locationRequest.setInterval(1100);
+////        locationRequest.setFastestInterval(1100);
+////        locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+//
+//        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+//
+//            LocationServices.FusedLocationApi.requestLocationUpdates(googleApiClient, locationRequest, (com.google.android.gms.location.LocationListener) this);
+//        }
+//    }
+
     @Override
-
-    public void onLocationChanged(Location location) {
-
-        lastLocation = location;
-
-        if (currentUserLocationMarker != null) {
-            currentUserLocationMarker.remove();
-        }
-
-        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-
-        MarkerOptions markerOptions = new MarkerOptions();
-        markerOptions.position(latLng);
-        markerOptions.title("User Current Location");
-        markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
-
-        currentUserLocationMarker = mMap.addMarker(markerOptions);
-
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
-        mMap.animateCamera(CameraUpdateFactory.zoomBy(12));
-
-        if (googleApiClient != null) {
-            LocationServices.FusedLocationApi.removeLocationUpdates(googleApiClient, (com.google.android.gms.location.LocationListener) this);
-        }
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+        Log.i("LocationFragment", "Connection failed: ConnectionResult.getErrorCode() " + connectionResult.getErrorCode());
     }
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
+        startLocation();
+    }
 
-        locationRequest = new LocationRequest();
-        locationRequest.setInterval(1100);
-        locationRequest.setFastestInterval(1100);
-        locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
-
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-
-            LocationServices.FusedLocationApi.requestLocationUpdates(googleApiClient, locationRequest, (com.google.android.gms.location.LocationListener) this);
+    private void startLocation() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
         }
+        LocationRequest request = locationHelper.createLocationRequest();
+//        LocationRequest request = new LocationRequest();
+//        request.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+//        request.setInterval(1100);
+        LocationServices.FusedLocationApi.requestLocationUpdates(googleApiClient, request, this);
+        locationHelper.startLocationUpdates();
     }
 
     @Override
     public void onConnectionSuspended(int i) {
-
-    }
-
-    @Override
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-
+        Log.i("LocationFragment", "Connection suspended");
+        googleApiClient.connect();
     }
 
     @Override
@@ -792,5 +901,6 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
                 break;
         }
     }
+
 }
 

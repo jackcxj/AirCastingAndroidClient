@@ -141,7 +141,7 @@ public class LocationHelper {
         return true;
     }
 
-    protected LocationRequest createLocationRequest() {
+    public LocationRequest createLocationRequest() {
         LocationRequest locationRequest = LocationRequest.create();
         locationRequest.setInterval(1000);
         locationRequest.setFastestInterval(1000);
@@ -154,7 +154,7 @@ public class LocationHelper {
         return mLastLocation;
     }
 
-    private void updateLocation(Location location) {
+    public void updateLocation(Location location) {
         mLastLocation = location;
 
         LocationEvent locationEvent = new LocationEvent();

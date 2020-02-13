@@ -83,6 +83,8 @@ public class SyncService extends RoboIntentService {
             if (canUpload()) {
                 sync();
             } else if (!settingsHelper.hasCredentials()) {
+                //todo
+                //we can upgrade the sync with the account identification
                 Intents.notifySyncUpdate(context, null, accountReminder);
             }
         } catch (SessionSyncException exception) {

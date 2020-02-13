@@ -62,6 +62,14 @@ public class GaugeHelper {
         mPeakTextView = view.findViewById(R.id.peak_label);
     }
 
+    public SessionDataAccessor getsessionData(){
+        return mSessionData;
+    }
+
+    public VisibleSession getVisibleSession(){
+        return mVisibleSession;
+    }
+
     public void updateGaugesFromSensor() {
         mSensor = mVisibleSession.getSensor();
         mPeak = (int) mVisibleSession.getPeak(mSensor);

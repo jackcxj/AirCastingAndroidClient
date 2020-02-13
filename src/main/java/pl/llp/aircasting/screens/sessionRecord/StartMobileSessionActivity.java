@@ -164,7 +164,6 @@ public class StartMobileSessionActivity extends DialogActivity implements View.O
 //                public void run() {
         session = currentSessionManager.getCurrentSession();
 //                        dashboardChartManager.stop();
-        locationHelper.stopLocationUpdates();
 //                    stopMobileAirCasting(session);
         Log.e("stopAirCasting", "all good");
 
