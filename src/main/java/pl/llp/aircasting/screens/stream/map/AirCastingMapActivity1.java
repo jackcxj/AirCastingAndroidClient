@@ -1,6 +1,7 @@
 package pl.llp.aircasting.screens.stream.map;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -35,18 +36,24 @@ import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.TileOverlay;
 import com.google.android.gms.maps.model.TileOverlayOptions;
+import com.google.android.gms.maps.model.VisibleRegion;
+import com.google.android.maps.GeoPoint;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
+import com.google.maps.android.SphericalUtil;
 import com.google.maps.android.heatmaps.Gradient;
 import com.google.maps.android.heatmaps.HeatmapTileProvider;
 
@@ -73,9 +80,13 @@ import pl.llp.aircasting.event.sensor.SensorEvent;
 import pl.llp.aircasting.event.sensor.ThresholdSetEvent;
 import pl.llp.aircasting.event.session.VisibleSessionUpdatedEvent;
 import pl.llp.aircasting.event.ui.VisibleStreamUpdatedEvent;
+import pl.llp.aircasting.model.Measurement;
 import pl.llp.aircasting.model.Sensor;
 import pl.llp.aircasting.model.Session;
+import pl.llp.aircasting.model.internal.Region;
 import pl.llp.aircasting.model.internal.MeasurementLevel;
+import pl.llp.aircasting.networking.drivers.AveragesDriver;
+import pl.llp.aircasting.networking.httpUtils.HttpResult;
 import pl.llp.aircasting.screens.common.ApplicationState;
 import pl.llp.aircasting.screens.common.ToastHelper;
 import pl.llp.aircasting.screens.common.ToggleAircastingManager;
@@ -95,14 +106,20 @@ import pl.llp.aircasting.sensor.common.ThresholdsHolder;
 import pl.llp.aircasting.sessionSync.SyncBroadcastReceiver;
 import pl.llp.aircasting.storage.UnfinishedSessionChecker;
 import roboguice.activity.event.OnCreateEvent;
+import roboguice.activity.event.OnPauseEvent;
 import roboguice.activity.event.OnResumeEvent;
+import roboguice.activity.event.OnStopEvent;
 import roboguice.application.RoboApplication;
 import roboguice.event.EventManager;
 import roboguice.inject.ContextScope;
 import roboguice.inject.InjectorProvider;
 
+
 import static com.google.android.gms.common.api.GoogleApiClient.*;
 import static pl.llp.aircasting.Intents.startSensors;
+import static pl.llp.aircasting.screens.stream.map.AirCastingMapActivity.HeatMapDownloader.MAP_BUFFER_SIZE;
+import static pl.llp.aircasting.screens.stream.map.LocationConversionHelper.geoPoint;
+import static pl.llp.aircasting.screens.stream.map.LocationConversionHelper.location;
 
 public class AirCastingMapActivity1 extends FragmentActivity implements
         OnMapReadyCallback,
@@ -196,10 +213,7 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
     private HeatmapTileProvider mProvider;
 
     //tracelap
-    LocationManager locationManager;
-    private Session session;
     private LatLng currentLatLng;
-    private Location mLastLocation;
     /**
      * 异常距离，如果超过这个距离，则说明移动距离异常,避免定位抖动造成的误差
      */
@@ -212,7 +226,16 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
     ThresholdsHolder thresholds;
     private int very_low, low, mid, high, very_high;
     private int[] colors;
+    private Location mLastLocation;
 
+    //heatmap
+    private LatLngBounds bounds;
+    double viewPortHeight;
+    double viewPortWidth;
+    @Inject
+    AveragesDriver averagesDriver;
+    private int requestsOutstanding = 0;
+    private HeatMapUpdater updater;
 
     private void addHeatMap() {
 
@@ -264,7 +287,7 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
         return list;
     }
 
-
+    @SuppressLint("ResourceType")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -292,6 +315,7 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
         mapFragment.getMapAsync(this);
 
         mapView = mapFragment.getView();
+
         if (mapView != null &&
                 mapView.findViewById(1) != null) {
             // Get the button view
@@ -375,6 +399,7 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
         Intents.startIOIO(context);
         Intents.startDatabaseWriterService(context);
 
+
         // AirCastingMapActivity
 //        initialize();
 //        refreshNotes();
@@ -388,9 +413,58 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
         checkConnection();
 
 
-//        updater = new AirCastingMapActivity.HeatMapUpdater();
+        updater = new HeatMapUpdater();
 //        heatMapDetector = detectMapIdle(mapView, HEAT_MAP_UPDATE_TIMEOUT, updater);
 //        soundTraceDetector = detectMapIdle(mapView, SOUND_TRACE_UPDATE_TIMEOUT, this);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        handler.removeCallbacks(pollServerTask);
+        if (viewingSessionsManager.sessionsEmpty() && !currentSessionManager.isSessionRecording()) {
+            Intents.stopSensors(this);
+        }
+
+        if (registeredReceiver != null) {
+            unregisterReceiver(syncBroadcastReceiver);
+            registeredReceiver = null;
+        }
+        eventBus.unregister(this);
+
+        eventManager.fire(new OnPauseEvent());
+
+//        routeRefreshDetector.stop();
+//        traceOverlay.stopDrawing(mapView);
+//        heatMapDetector.stop();
+//        soundTraceDetector.stop();
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        scope.enter(this);
+        try {
+            eventManager.fire(new OnStopEvent());
+        } finally {
+            scope.exit(this);
+            super.onStop();
+        }
+        getDelegate().onStop();
+
+        navigationDrawerHelper.removeHeader();
+
+        googleApiClient.disconnect();
+
+    }
+
+    @Override
+    public void onPostResume() {
+        super.onPostResume();
+        getDelegate().invalidateOptionsMenu();
+        navigationDrawerHelper.removeHeader();
+        navigationDrawerHelper.setDrawerHeader();
     }
 
     private void initialize_Base() {
@@ -577,20 +651,6 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
         measurementPresenter.reset();
     }
 
-//    private void toggleHeatMapVisibility(MenuItem menuItem) {
-//        if (heatMapVisible) {
-//            heatMapVisible = false;
-//            mapView.getOverlays().remove(heatMapOverlay);
-//            mapView.invalidate();
-//            menuItem.setIcon(R.drawable.toolbar_crowd_map_icon_inactive);
-//        } else {
-//            heatMapVisible = true;
-//            mapView.getOverlays().add(0, heatMapOverlay);
-//            mapView.invalidate();
-//            menuItem.setIcon(R.drawable.toolbar_crowd_map_icon_active);
-//        }
-//    }
-
 //    @Override
 //    public void onViewUpdated() {
 //    }
@@ -662,6 +722,7 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
     public void onEvent(VisibleStreamUpdatedEvent event) {
         topBarHelper.updateTopBar(event.getSensor(), topBar);
         updateGauges();
+        updater.onMapIdle();
     }
 
     /**
@@ -680,19 +741,23 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
         initGoogle();
         mMap.setMyLocationEnabled(true);
 
-//        Location myLocation = mMap.getMyLocation();
-//        locationHelper.updateLocation(myLocation);
-
         // Add a marker in Sydney and move the camera
 //        LatLng sydney = new LatLng(-34, 151);
 //        locationHelper.updateLocation(sydney);
 //        mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
 //        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+
+        mMap.setOnCameraChangeListener(new GoogleMap.OnCameraChangeListener() {
+            @Override
+            public void onCameraChange(CameraPosition position) {
+                bounds = mMap.getProjection().getVisibleRegion().latLngBounds;
+            }
+        });
     }
 
     @Override
     public void onLocationChanged(Location location) {
-//        locationHelper.updateLocation(location);
+
         double latitude = location.getLatitude();
         double longitude = location.getLongitude();
 
@@ -707,8 +772,7 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
         if (movedDistance > DISTANCE_ERROR || movedDistance <= 0.002) {
             return;
         } else if (currentSessionManager.isSessionRecording()) {
-//            Log.e("latitude add point", ": " + latitude);
-//            Log.e("longitude add point", ": " + longitude);
+
             locationHelper.updateLocation(location);
             addPoint(currentLatLng);
         }
@@ -833,7 +897,7 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
 
     void initGoogle() {
 
-        googleApiClient = new Builder(this)
+        googleApiClient = new GoogleApiClient.Builder(this)
                 .enableAutoManage(this /* FragmentActivity */,
                         this /* OnConnectionFailedListener */)
                 .addConnectionCallbacks(this)
@@ -842,22 +906,6 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
 
         googleApiClient.connect();
     }
-
-//
-//    @Override
-//    public void onConnected(@Nullable Bundle bundle) {
-//
-//        locationHelper.createLocationRequest();
-////        locationRequest = new LocationRequest();
-////        locationRequest.setInterval(1100);
-////        locationRequest.setFastestInterval(1100);
-////        locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
-//
-//        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-//
-//            LocationServices.FusedLocationApi.requestLocationUpdates(googleApiClient, locationRequest, (com.google.android.gms.location.LocationListener) this);
-//        }
-//    }
 
     @Override
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
@@ -875,11 +923,14 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
             return;
         }
         LocationRequest request = locationHelper.createLocationRequest();
-//        LocationRequest request = new LocationRequest();
-//        request.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-//        request.setInterval(1100);
         LocationServices.FusedLocationApi.requestLocationUpdates(googleApiClient, request, this);
         locationHelper.startLocationUpdates();
+        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(googleApiClient);
+        if (mLastLocation != null) {
+            LatLng currentLocation = new LatLng(mLastLocation.getLatitude(), mLastLocation
+                    .getLongitude());
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLocation, 14));
+        }
     }
 
     @Override
@@ -901,6 +952,57 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
                 break;
         }
     }
+
+    class HeatMapDownloader extends AsyncTask<Void, Void, HttpResult<Iterable<Region>>> {
+        public static final int MAP_BUFFER_SIZE = 3;
+
+        @Override
+        protected void onPreExecute() {
+            requestsOutstanding += 1;
+        }
+
+    protected HttpResult<Iterable<Region>> doInBackground(Void... voids) {
+
+//         We want to download data that's off screen so the user can see something while panning
+
+        LatLng northWestLoc = bounds.northeast;
+        LatLng southEastLoc = bounds.southwest;
+
+//        int size = min(mapView.getWidth(), mapView.getHeight()) / settingsHelper.getHeatMapDensity();
+//        if (size < 1) size = 1;
+//
+//        int gridSizeX = MAP_BUFFER_SIZE * mapView.getWidth() / size;
+//        int gridSizeY = MAP_BUFFER_SIZE * mapView.getHeight() / size;
+
+        return averagesDriver.index(visibleSession.getSensor(), northWestLoc.longitude, northWestLoc.latitude,
+                southEastLoc.longitude, southEastLoc.latitude, 15, 15);
+    }
+
+        @Override
+        protected void onPostExecute(HttpResult<Iterable<Region>> regions) {
+            requestsOutstanding -= 1;
+
+            Log.e("regions",": "+ regions);
+            if (regions.getContent() != null) {
+                heatMapOverlay.setRegions(regions.getContent());
+            }
+            mapView.invalidate();
+        }
+    }
+
+    private class HeatMapUpdater implements MapIdleDetector.MapIdleListener {
+        @Override
+        public void onMapIdle() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    //noinspection unchecked
+                    new HeatMapDownloader().execute();
+                }
+            });
+        }
+    }
+
 
 }
 
