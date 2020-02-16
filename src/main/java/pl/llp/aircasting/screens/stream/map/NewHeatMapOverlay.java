@@ -93,13 +93,14 @@ public class NewHeatMapOverlay {
 
             }
         }
-        int[] color_green = new int[]{Color.rgb(255,255,255), Color.rgb(101, 198, 138)}; // green
-        int[] color_yellow = new int[]{Color.rgb(255,255,255), Color.rgb(254, 230, 101)}; // yellow
-        int[] color_orange = new int[]{Color.rgb(255,255,255), Color.rgb(254, 176, 101)}; // orange
-        int[] color_red = new int[]{Color.rgb(255,255,255), Color.rgb(254, 100, 101)}; // red
+        int[] color_green = new int[]{Color.rgb(152,251,152),Color.rgb(144,238,144), Color.rgb(101, 198, 138)}; // green
+        int[] color_yellow = new int[]{Color.rgb(	255,255,240),Color.rgb(255,255,224), Color.rgb(254, 230, 101)}; // yellow
+        int[] color_orange = new int[]{Color.rgb(255,218,185),Color.rgb(244,164,96), Color.rgb(254, 176, 101)}; // orange
+        int[] color_red = new int[]{Color.rgb(255,160,122),Color.rgb(255,99,71), Color.rgb(254, 100, 101)}; // red
 
-        float[] startPoints = {0.2f, 0.5f};
-        float transparency = 0.6f;
+        float[] startPoints = {0.2f, 0.5f,1.0f};
+        float transparency = 0.5f;
+        double opacity=0.7;
 
         Gradient gradient_green = new Gradient(color_green, startPoints);
         Gradient gradient_yellow = new Gradient(color_yellow, startPoints);
@@ -111,6 +112,7 @@ public class NewHeatMapOverlay {
             mProvider_red = new HeatmapTileProvider.Builder()
                     .data(list_red)
                     .gradient(gradient_red).radius(35)
+                    .opacity(opacity)
                     .build();
             mOverlay = mMap.addTileOverlay(new TileOverlayOptions().tileProvider(mProvider_red));
         }
@@ -118,6 +120,7 @@ public class NewHeatMapOverlay {
             mProvider_orange = new HeatmapTileProvider.Builder()
                     .data(list_orange)
                     .gradient(gradient_orange).radius(35)
+                    .opacity(opacity)
                     .build();
             mOverlay = mMap.addTileOverlay(new TileOverlayOptions().tileProvider(mProvider_orange));
         }
@@ -125,6 +128,7 @@ public class NewHeatMapOverlay {
             mProvider_yellow = new HeatmapTileProvider.Builder()
                     .data(list_yellow)
                     .gradient(gradient_yellow).radius(35)
+                    .opacity(opacity)
                     .build();
             mOverlay = mMap.addTileOverlay(new TileOverlayOptions().tileProvider(mProvider_yellow));
         }
