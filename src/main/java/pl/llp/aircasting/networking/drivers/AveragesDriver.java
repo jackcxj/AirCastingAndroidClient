@@ -19,12 +19,15 @@
  */
 package pl.llp.aircasting.networking.drivers;
 
+import android.util.Log;
+
 import com.google.gson.reflect.TypeToken;
 import pl.llp.aircasting.model.internal.Region;
 import pl.llp.aircasting.model.Sensor;
 import pl.llp.aircasting.networking.httpUtils.HttpResult;
 
 import java.lang.reflect.Type;
+import java.util.Iterator;
 import java.util.List;
 
 import static java.lang.String.valueOf;
@@ -44,17 +47,32 @@ public class AveragesDriver {
 
   public HttpResult<Iterable<Region>> index(Sensor sensor, double west, double north, double east, double south,
                                             int gridSizeX, int gridSizeY) {
-    return http()
-        .get()
-        .from(AVERAGES_PATH)
-        .with("q[west]", valueOf(west))
-        .with("q[north]", valueOf(north))
-        .with("q[east]", valueOf(east))
-        .with("q[south]", valueOf(south))
-        .with("q[grid_size_x]", valueOf(gridSizeX))
-        .with("q[grid_size_y]", valueOf(gridSizeY))
-        .with("q[sensor_name]", sensor.getSensorName())
-        .with("q[measurement_type]", sensor.getMeasurementType())
-        .into(listType);
+    Log.e("index方法","west:" + west);
+    Log.e("index方法","north:" + north);
+    Log.e("index方法","east:" + east);
+    Log.e("index方法","south:" + south);
+    Log.e("index方法","gridSizeX:" + gridSizeX);
+    Log.e("index方法","gridSizeY:" + gridSizeY);
+    HttpResult<Iterable<Region>> httpResults = http()
+            .get()
+            .from(AVERAGES_PATH)
+            .with("q[west]", valueOf(west))
+            .with("q[north]", valueOf(north))
+            .with("q[east]", valueOf(east))
+            .with("q[south]", valueOf(south))
+            .with("q[grid_size_x]", valueOf(gridSizeX))
+            .with("q[grid_size_y]", valueOf(gridSizeY))
+            .with("q[sensor_name]", sensor.getSensorName())
+            .with("q[measurement_type]", sensor.getMeasurementType())
+            .into(listType);
+//    Iterator<Region> itr = httpResults.getContent().iterator();
+//    while (itr.hasNext()) {
+//      Log.e("index Result方法","region east " + itr.next().getEast());
+//      Log.e("index Result方法","region north " + itr.next().getNorth());
+//      Log.e("index Result方法","region south " + itr.next().getSouth());
+//      Log.e("index Result方法","region west " + itr.next().getWest());
+//      Log.e("index Result方法","region value " + itr.next().getValue());
+//    }
+    return httpResults;
   }
 }

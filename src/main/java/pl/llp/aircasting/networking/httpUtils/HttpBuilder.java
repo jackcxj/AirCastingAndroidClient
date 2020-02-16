@@ -19,6 +19,8 @@
 */
 package pl.llp.aircasting.networking.httpUtils;
 
+import android.util.Log;
+
 import cz.msebera.android.httpclient.client.methods.HttpDelete;
 import pl.llp.aircasting.util.Logger;
 import pl.llp.aircasting.screens.common.helpers.SettingsHelper;
@@ -199,6 +201,7 @@ public class HttpBuilder implements ChooseMethod, ChoosePath, PerformRequest
     private <T> HttpResult<T> doGet(Type target) {
         try {
             URI path = createPath(address, query());
+            Log.e("doGet方法","url 地址"+path);
             HttpGet get = new HttpGet(path);
 
             return doRequest(get, target);

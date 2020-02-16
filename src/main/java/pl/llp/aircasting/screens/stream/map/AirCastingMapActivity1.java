@@ -64,6 +64,7 @@ import org.json.JSONObject;
 import java.io.InputStream;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
@@ -885,29 +886,43 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
 
 //         We want to download data that's off screen so the user can see something while panning
 
-        LatLng northWestLoc = bounds.northeast;
-        LatLng southEastLoc = bounds.southwest;
+        LatLng northEastLoc = bounds.northeast;
+        LatLng southWestLoc = bounds.southwest;
+//        LatLng dif_latlng = new LatLng((southEastLoc.latitude - northWestLoc.latitude)/ 2,
+//                (southEastLoc.longitude - northWestLoc.longitude)/ 2);
+//        LatLng newnorthWestLoc = new LatLng(northWestLoc.latitude - dif_latlng.latitude,
+//                northWestLoc.longitude - dif_latlng.longitude);
+//
+//        Log.e("diff_latitude", ": "+ (southEastLoc.latitude - northWestLoc.latitude));
+//        Log.e("diff_longitude", ": "+ (southEastLoc.longitude - northWestLoc.longitude));
 
         int size = Math.min(mapView.getWidth(), mapView.getHeight()) / settingsHelper.getHeatMapDensity();
         if (size < 1) size = 1;
 
-        Log.e("mapView.getWidth()", ": " + mapView.getWidth());
-        Log.e("mapView.getHeight()", ": " + mapView.getHeight());
+//        Log.e("mapView.getWidth()", ": " + mapView.getWidth());
+//        Log.e("mapView.getHeight()", ": " + mapView.getHeight());
         int gridSizeX = MAP_BUFFER_SIZE * mapView.getWidth() / size;
         int gridSizeY = MAP_BUFFER_SIZE * mapView.getHeight() / size;
 
-        return averagesDriver.index(visibleSession.getSensor(), northWestLoc.longitude, northWestLoc.latitude,
-                southEastLoc.longitude, southEastLoc.latitude, gridSizeX, gridSizeY);
+        return averagesDriver.index(visibleSession.getSensor(), southWestLoc.longitude, northEastLoc.latitude,
+                northEastLoc.longitude, southWestLoc.latitude, gridSizeX, gridSizeY);
     }
 
         @Override
         protected void onPostExecute(HttpResult<Iterable<Region>> regions) {
             requestsOutstanding -= 1;
-
-            Toast.makeText(AirCastingMapActivity1.this, ":this is "+ regions.getContent(), Toast.LENGTH_LONG).show();
+//            Iterator<Region> itr = regions.getContent().iterator();
+//            while (itr.hasNext()) {
+//                Log.e("onPostExecute方法","region east " + itr.next().getEast());
+//                Log.e("onPostExecute方法","region north " + itr.next().getNorth());
+//                Log.e("onPostExecute方法","region south " + itr.next().getSouth());
+//                Log.e("onPostExecute方法","region west " + itr.next().getWest());
+//                Log.e("onPostExecute方法","region value " + itr.next().getValue());
+//            }
+//            Toast.makeText(AirCastingMapActivity1.this, ":this is "+ regions.getContent(), Toast.LENGTH_LONG).show();
             if (regions.getContent() != null) {
                 heatMapOverlay.setRegions(regions.getContent());
-                heatMapOverlay.draw(mapView, mMap);
+                heatMapOverlay.draw(mMap);
             }
             mapView.invalidate();
         }
@@ -925,57 +940,5 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
             });
         }
     }
-
-    private void addHeatMap() {
-
-        List<LatLng> list = null;
-
-        // Get the data: latitude/longitude positions of police stations.
-        try {
-            list = readItems(R.raw.police_stations);
-        } catch (JSONException e) {
-            Toast.makeText(this, "Problem reading list of locations.", Toast.LENGTH_LONG).show();
-        }
-
-        // Create a heat map tile provider, passing it the latlngs of the police stations.
-
-        // Add a tile overlay to the map, using the heat map tile provider.
-
-        int[] colors = {
-                Color.rgb(102, 225, 0), // green
-                Color.rgb(255, 0, 0)    // red
-        };
-
-        float[] startPoints = {0.2f, 0.5f};
-
-        Gradient gradient = new Gradient(colors, startPoints);
-
-// Create the tile provider.
-        mProvider = new HeatmapTileProvider.Builder()
-                .data(list)
-                .gradient(gradient)
-                .build();
-
-// Add the tile overlay to the map.
-        mOverlay = mMap.addTileOverlay(new TileOverlayOptions().tileProvider(mProvider));
-
-    }
-
-
-    private ArrayList<LatLng> readItems(int resource) throws JSONException {
-        ArrayList<LatLng> list = new ArrayList<LatLng>();
-        InputStream inputStream = getResources().openRawResource(resource);
-        String json = new Scanner(inputStream).useDelimiter("\\A").next();
-        JSONArray array = new JSONArray(json);
-        for (int i = 0; i < array.length(); i++) {
-            JSONObject object = array.getJSONObject(i);
-            double lat = object.getDouble("lat");
-            double lng = object.getDouble("lng");
-            list.add(new LatLng(lat, lng));
-        }
-        return list;
-    }
-
-
 }
 
