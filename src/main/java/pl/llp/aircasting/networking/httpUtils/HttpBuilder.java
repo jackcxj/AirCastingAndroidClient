@@ -201,7 +201,6 @@ public class HttpBuilder implements ChooseMethod, ChoosePath, PerformRequest
     private <T> HttpResult<T> doGet(Type target) {
         try {
             URI path = createPath(address, query());
-            Log.e("doGet方法","url 地址"+path);
             HttpGet get = new HttpGet(path);
 
             return doRequest(get, target);

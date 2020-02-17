@@ -6,7 +6,6 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
-import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
@@ -44,29 +43,18 @@ import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
-import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.TileOverlay;
 import com.google.android.gms.maps.model.TileOverlayOptions;
-import com.google.android.gms.maps.model.VisibleRegion;
-import com.google.android.maps.GeoPoint;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
-import com.google.maps.android.SphericalUtil;
 import com.google.maps.android.heatmaps.Gradient;
 import com.google.maps.android.heatmaps.HeatmapTileProvider;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.InputStream;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -75,15 +63,12 @@ import pl.llp.aircasting.R;
 import pl.llp.aircasting.event.measurements.MobileMeasurementEvent;
 import pl.llp.aircasting.event.sensor.AudioReaderErrorEvent;
 import pl.llp.aircasting.event.sensor.FixedSensorEvent;
-import pl.llp.aircasting.event.sensor.LocationEvent;
 import pl.llp.aircasting.event.sensor.SensorConnectedEvent;
 import pl.llp.aircasting.event.sensor.SensorEvent;
 import pl.llp.aircasting.event.sensor.ThresholdSetEvent;
 import pl.llp.aircasting.event.session.VisibleSessionUpdatedEvent;
 import pl.llp.aircasting.event.ui.VisibleStreamUpdatedEvent;
-import pl.llp.aircasting.model.Measurement;
 import pl.llp.aircasting.model.Sensor;
-import pl.llp.aircasting.model.Session;
 import pl.llp.aircasting.model.internal.Region;
 import pl.llp.aircasting.model.internal.MeasurementLevel;
 import pl.llp.aircasting.networking.drivers.AveragesDriver;
@@ -118,11 +103,9 @@ import roboguice.inject.InjectorProvider;
 
 import static com.google.android.gms.common.api.GoogleApiClient.*;
 import static pl.llp.aircasting.Intents.startSensors;
-import static pl.llp.aircasting.screens.stream.map.AirCastingMapActivity.HeatMapDownloader.MAP_BUFFER_SIZE;
 import static pl.llp.aircasting.screens.stream.map.LocationConversionHelper.geoPoint;
-import static pl.llp.aircasting.screens.stream.map.LocationConversionHelper.location;
 
-public class AirCastingMapActivity1 extends FragmentActivity implements
+public class NewAirCastingMapActivity extends FragmentActivity implements
         OnMapReadyCallback,
         ConnectionCallbacks,
         OnConnectionFailedListener,
@@ -350,7 +333,6 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
         Intents.startIOIO(context);
         Intents.startDatabaseWriterService(context);
 
-
         // AirCastingMapActivity
 //        initialize();
 //        refreshNotes();
@@ -362,7 +344,7 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
 //        traceOverlay.refresh(mapView);
 
         checkConnection();
-
+//        updater = new HeatMapUpdater();
 //        heatMapDetector = detectMapIdle(mapView, HEAT_MAP_UPDATE_TIMEOUT, updater);
 //        soundTraceDetector = detectMapIdle(mapView, SOUND_TRACE_UPDATE_TIMEOUT, this);
     }
@@ -429,7 +411,7 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
             new AsyncTask<Void, Void, Void>() {
                 @Override
                 protected Void doInBackground(Void... voids) {
-                    checker.finishIfNeeded(AirCastingMapActivity1.this);
+                    checker.finishIfNeeded(NewAirCastingMapActivity.this);
                     lastChecked = System.currentTimeMillis();
                     return null;
                 }
@@ -558,17 +540,17 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
         if (heatMapVisible) {
             heatMapVisible = false;
 //             mapView.getOverlays().remove(heatMapOverlay);
-            updater = new HeatMapUpdater();
-            updater.onMapIdle();
-//            mOverlay.remove();
-//            mOverlay.clearTileCache();
+
+            heatMapOverlay.remoteOverlay();
             mapView.invalidate();
 
             menuItem.setIcon(R.drawable.toolbar_crowd_map_icon_inactive);
         } else {
             heatMapVisible = true;
 //            mapView.getOverlays().add(0, heatMapOverlay);
-//            addHeatMap();
+
+            updater = new HeatMapUpdater();
+            updater.onMapIdle();
             mapView.invalidate();
             menuItem.setIcon(R.drawable.toolbar_crowd_map_icon_active);
 
@@ -888,19 +870,10 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
 
         LatLng northEastLoc = bounds.northeast;
         LatLng southWestLoc = bounds.southwest;
-//        LatLng dif_latlng = new LatLng((southEastLoc.latitude - northWestLoc.latitude)/ 2,
-//                (southEastLoc.longitude - northWestLoc.longitude)/ 2);
-//        LatLng newnorthWestLoc = new LatLng(northWestLoc.latitude - dif_latlng.latitude,
-//                northWestLoc.longitude - dif_latlng.longitude);
-//
-//        Log.e("diff_latitude", ": "+ (southEastLoc.latitude - northWestLoc.latitude));
-//        Log.e("diff_longitude", ": "+ (southEastLoc.longitude - northWestLoc.longitude));
 
         int size = Math.min(mapView.getWidth(), mapView.getHeight()) / settingsHelper.getHeatMapDensity();
         if (size < 1) size = 1;
 
-//        Log.e("mapView.getWidth()", ": " + mapView.getWidth());
-//        Log.e("mapView.getHeight()", ": " + mapView.getHeight());
         int gridSizeX = MAP_BUFFER_SIZE * mapView.getWidth() / size;
         int gridSizeY = MAP_BUFFER_SIZE * mapView.getHeight() / size;
 
@@ -911,15 +884,7 @@ public class AirCastingMapActivity1 extends FragmentActivity implements
         @Override
         protected void onPostExecute(HttpResult<Iterable<Region>> regions) {
             requestsOutstanding -= 1;
-//            Iterator<Region> itr = regions.getContent().iterator();
-//            while (itr.hasNext()) {
-//                Log.e("onPostExecute方法","region east " + itr.next().getEast());
-//                Log.e("onPostExecute方法","region north " + itr.next().getNorth());
-//                Log.e("onPostExecute方法","region south " + itr.next().getSouth());
-//                Log.e("onPostExecute方法","region west " + itr.next().getWest());
-//                Log.e("onPostExecute方法","region value " + itr.next().getValue());
-//            }
-//            Toast.makeText(AirCastingMapActivity1.this, ":this is "+ regions.getContent(), Toast.LENGTH_LONG).show();
+
             if (regions.getContent() != null) {
                 heatMapOverlay.setRegions(regions.getContent());
                 heatMapOverlay.draw(mMap);

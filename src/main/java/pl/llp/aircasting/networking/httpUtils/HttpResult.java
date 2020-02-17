@@ -20,7 +20,6 @@
 package pl.llp.aircasting.networking.httpUtils;
 
 import java.util.Map;
-import pl.llp.aircasting.networking.httpUtils.Status;
 
 public class HttpResult<T> {
     Status status;
