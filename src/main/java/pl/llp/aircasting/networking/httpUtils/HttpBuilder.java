@@ -202,7 +202,6 @@ public class HttpBuilder implements ChooseMethod, ChoosePath, PerformRequest
         try {
             URI path = createPath(address, query());
             HttpGet get = new HttpGet(path);
-
             return doRequest(get, target);
         } catch (URISyntaxException e) {
             Logger.e("Couldn't create path", e);

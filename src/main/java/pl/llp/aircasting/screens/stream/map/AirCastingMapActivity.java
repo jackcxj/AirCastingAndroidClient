@@ -123,7 +123,6 @@ public class AirCastingMapActivity extends AirCastingActivity implements MapIdle
         noteOverlay.setContext(this);
 
         setContentView(R.layout.heat_map);
-
         initToolbar("Map");
         initNavigationDrawer();
         centerMap.setOnClickListener(this);

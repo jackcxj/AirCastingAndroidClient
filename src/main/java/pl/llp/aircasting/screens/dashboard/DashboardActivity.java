@@ -60,6 +60,8 @@ public class DashboardActivity extends DashboardBaseActivity implements Dashboar
     private static final String DASHBOARD_BUNDLE = "dashboard_bundle";
     private static final String HIDDEN_STREAMS = "hidden_streams";
 
+    private int count = 0;
+
     @Inject CurrentSessionSensorManager currentSessionSensorManager;
     @Inject ResourceHelper mResourceHelper;
     @Inject SessionDataAccessor sessionData;
@@ -285,6 +287,7 @@ public class DashboardActivity extends DashboardBaseActivity implements Dashboar
         }
 
         if (currentSessionManager.anySensorConnected() && !currentSessionManager.isSessionRecording()) {
+            inflater.inflate(R.menu.toolbar_autoupload_permission, menu);
             inflater.inflate(R.menu.toolbar_start_recording, menu);
         } else if (currentSessionManager.isSessionRecording()){
             inflater.inflate(R.menu.toolbar_stop_recording, menu);
@@ -323,6 +326,15 @@ public class DashboardActivity extends DashboardBaseActivity implements Dashboar
             case R.id.session_rearrange_toggle:
                 toggleSessionReorder(menuItem);
                 break;
+            case R.id.auto_upload:
+                if(count%2 == 0){
+                    Toast.makeText(this, "It is allow to upload the data automatically", Toast.LENGTH_SHORT).show();
+                    count++;
+                }else{
+                    Toast.makeText(this, "It is not allow to upload the data automatically", Toast.LENGTH_SHORT).show();
+                    count++;
+                }
+
         }
         return true;
     }

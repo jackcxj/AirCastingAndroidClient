@@ -61,5 +61,17 @@
               android:icon="@drawable/menu_sensors_icon_black"
               android:title="@string/connect_external_device"
         />
+<!--        <item android:id="@+id/auto_upload"-->
+<!--            android:icon="@drawable/upload"-->
+<!--            android:title="@string/Automatically_upload"-->
+<!--            />-->
+<!--        <Switch-->
+<!--            android:id="@+id/upload"-->
+<!--            android:text="@string/Automatically_upload"-->
+<!--            android:textOn = "On"-->
+<!--            android:textOff = "Off"-->
+<!--            android:checked="true"-->
+<!--            android:icon="@drawable/upload" />-->
     </group>
+
 </menu>

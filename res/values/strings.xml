@@ -197,4 +197,5 @@
     <string name="session_exported">Exported sessions will be emailed within minutes. The email may end up in your spam folder.</string>
     <string name="com.google.android.geo.API_KEY">AIzaSyAC5xgOYQCxt4ZaIAzaPoBSbwc4L9RfzI0</string>
     <string name="com.google.android.geo.MAPS_KEY">AIzaSyAC5xgOYQCxt4ZaIAzaPoBSbwc4L9RfzI0</string>
+    <string name="Automatically_upload">Automatically upload</string>
 </resources>

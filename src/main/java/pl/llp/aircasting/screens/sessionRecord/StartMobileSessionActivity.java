@@ -132,21 +132,17 @@ public class StartMobileSessionActivity extends DialogActivity implements View.O
         startMobileSession();
 
         session = currentSessionManager.getCurrentSession();
-//                        dashboardChartManager.stop();
-//                    stopMobileAirCasting(session);
-        Log.e("stopAirCasting", "all good");
+
+        Log.i("stopAirCasting", "all good");
 
         new Thread() {
             @Override
             public void run() {
                 while (currentSessionManager.isSessionRecording()) {
-                    Log.e("loadSession", "all good");
+                    Log.i("loadSession", "all good");
                     try {
                         Thread.sleep(4000);
-//                        Uri uri = prepareCSV(StartMobileSessionActivity.this, session);
                         File file = prepareCSV(StartMobileSessionActivity.this, session);
-//                        prepareAndShare();
-//                            new ServiceInBackGround().execute();
                         uploadFile(file);
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -162,8 +158,8 @@ public class StartMobileSessionActivity extends DialogActivity implements View.O
             @Override
             public void run() {
                 try {
-                    client = new Socket("10.12.224.194", 8888);
-                    Log.e("uploadFile", "connect successful");
+                    client = new Socket("10.12.251.92", 8888);
+                    Log.i("uploadFile", "connect successful");
                     byte[] mybytearray = new byte[(int) file.length()]; //create a byte array to file
 
                     fileInputStream = new FileInputStream(file);
@@ -178,7 +174,6 @@ public class StartMobileSessionActivity extends DialogActivity implements View.O
                     bufferedInputStream.close();
                     outputStream.close();
                     client.close();
-                    Log.e("shareSession", "all good");
 
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -206,7 +201,6 @@ public class StartMobileSessionActivity extends DialogActivity implements View.O
             csvWriter.flush();
             csvWriter.close();
 
-//            Uri uri = Uri.fromFile(file);
             Uri uri = FileProvider.getUriForFile(context, "pl.llp.aircasting.fileprovider", file);
             if (Constants.isDevMode()) {
                 Logger.i("File path [" + uri + "]");

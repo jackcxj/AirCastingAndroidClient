@@ -9,6 +9,7 @@ import com.google.inject.Inject;
 import pl.llp.aircasting.R;
 import pl.llp.aircasting.screens.common.base.DialogActivity;
 import pl.llp.aircasting.screens.stream.graph.GraphActivity;
+import pl.llp.aircasting.screens.stream.map.AirCastingMapActivity;
 import pl.llp.aircasting.screens.stream.map.NewAirCastingMapActivity;
 import roboguice.inject.InjectView;
 

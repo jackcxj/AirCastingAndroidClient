@@ -188,20 +188,12 @@ public class NewAirCastingMapActivity extends FragmentActivity implements
     private static final int ACTION_CENTER = 2;
     private int mRequestedAction;
 
-    //heatmap
-    private boolean heatMapVisible = false;
-    @Inject
-    NewHeatMapOverlay heatMapOverlay;
-    public DrawerLayout drawerLayout;
-    private TileOverlay mOverlay;
-    private HeatmapTileProvider mProvider;
-
-    //tracelap
+    //traceoverlay
     private LatLng currentLatLng;
     /**
-     * 异常距离，如果超过这个距离，则说明移动距离异常,避免定位抖动造成的误差
+     * judge distance, if it exceeds it which means the error of the change
      */
-    private static final int DISTANCE_ERROR = 20;
+    private static final int DISTANCE_ERROR = 10;
     private SessionDataAccessor mSessionData;
     private VisibleSession mVisibleSession;
     private Sensor mSensor;
@@ -212,7 +204,13 @@ public class NewAirCastingMapActivity extends FragmentActivity implements
     private int[] colors;
     private Location mLastLocation;
 
-    //heatmap
+    //heatmapoverlay
+    private boolean heatMapVisible = false;
+    @Inject
+    NewHeatMapOverlay heatMapOverlay;
+    public DrawerLayout drawerLayout;
+    private TileOverlay mOverlay;
+    private HeatmapTileProvider mProvider;
     private LatLngBounds bounds;
     double viewPortHeight;
     double viewPortWidth;
@@ -310,6 +308,7 @@ public class NewAirCastingMapActivity extends FragmentActivity implements
         scope.enter(this);
         super.onResume();
         eventManager.fire(new OnResumeEvent());
+
         // AirCastingBaseActivity
         initialize_Base();
 
@@ -492,6 +491,7 @@ public class NewAirCastingMapActivity extends FragmentActivity implements
         MenuInflater inflater = getDelegate().getMenuInflater();
 
         if (currentSessionManager.isSessionIdle()) {
+            inflater.inflate(R.menu.toolbar_autoupload_permission, menu);
             inflater.inflate(R.menu.toolbar_start_recording, menu);
         } else if (currentSessionManager.isSessionRecording()) {
             inflater.inflate(R.menu.toolbar_stop_recording, menu);
@@ -676,7 +676,7 @@ public class NewAirCastingMapActivity extends FragmentActivity implements
         currentLatLng = new LatLng(location.getLatitude(), location.getLongitude());
         //计算当前定位与前一次定位的距离，如果距离异常或是距离为0,则不做任何操作
         double movedDistance = CalculationByDistance(lastLatLng, currentLatLng);
-        if (movedDistance > DISTANCE_ERROR || movedDistance <= 0.002) {
+        if (movedDistance > DISTANCE_ERROR || movedDistance <= 0.001) {
             return;
         } else if (currentSessionManager.isSessionRecording()) {
 
@@ -799,7 +799,6 @@ public class NewAirCastingMapActivity extends FragmentActivity implements
     }
 
     void initGoogle() {
-
         googleApiClient = new GoogleApiClient.Builder(this)
                 .enableAutoManage(this /* FragmentActivity */,
                         this /* OnConnectionFailedListener */)
@@ -864,22 +863,20 @@ public class NewAirCastingMapActivity extends FragmentActivity implements
             requestsOutstanding += 1;
         }
 
-    protected HttpResult<Iterable<Region>> doInBackground(Void... voids) {
+        protected HttpResult<Iterable<Region>> doInBackground(Void... voids) {
 
-//         We want to download data that's off screen so the user can see something while panning
+            LatLng northEastLoc = bounds.northeast;
+            LatLng southWestLoc = bounds.southwest;
 
-        LatLng northEastLoc = bounds.northeast;
-        LatLng southWestLoc = bounds.southwest;
+            int size = Math.min(mapView.getWidth(), mapView.getHeight()) / settingsHelper.getHeatMapDensity();
+            if (size < 1) size = 1;
 
-        int size = Math.min(mapView.getWidth(), mapView.getHeight()) / settingsHelper.getHeatMapDensity();
-        if (size < 1) size = 1;
+            int gridSizeX = MAP_BUFFER_SIZE * mapView.getWidth() / size;
+            int gridSizeY = MAP_BUFFER_SIZE * mapView.getHeight() / size;
 
-        int gridSizeX = MAP_BUFFER_SIZE * mapView.getWidth() / size;
-        int gridSizeY = MAP_BUFFER_SIZE * mapView.getHeight() / size;
-
-        return averagesDriver.index(visibleSession.getSensor(), southWestLoc.longitude, northEastLoc.latitude,
-                northEastLoc.longitude, southWestLoc.latitude, gridSizeX, gridSizeY);
-    }
+            return averagesDriver.index(visibleSession.getSensor(), southWestLoc.longitude, northEastLoc.latitude,
+                    northEastLoc.longitude, southWestLoc.latitude, gridSizeX, gridSizeY);
+        }
 
         @Override
         protected void onPostExecute(HttpResult<Iterable<Region>> regions) {
