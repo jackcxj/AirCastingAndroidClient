@@ -14,6 +14,7 @@
         >
 
         <include layout="@layout/toolbar"/>
+
         <RelativeLayout android:layout_width="fill_parent"
             android:layout_height="fill_parent"
             android:layout_weight="1"
@@ -27,7 +28,9 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             tools:context="pl.llp.aircasting.screens.stream.map.AirCastingMapActivity2" />
+
             <include layout="@layout/gauges"/>
+
         </RelativeLayout>
     </LinearLayout>
     <!--navigation drawer-->

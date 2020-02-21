@@ -2,6 +2,7 @@ package pl.llp.aircasting.screens.stream.map;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.Dialog;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -80,6 +81,7 @@ import pl.llp.aircasting.screens.common.ToggleAircastingManagerFactory;
 import pl.llp.aircasting.screens.common.helpers.LocationHelper;
 import pl.llp.aircasting.screens.common.helpers.NavigationDrawerHelper;
 import pl.llp.aircasting.screens.common.helpers.ResourceHelper;
+import pl.llp.aircasting.screens.common.helpers.SelectSensorHelper;
 import pl.llp.aircasting.screens.common.helpers.SettingsHelper;
 import pl.llp.aircasting.screens.common.sessionState.CurrentSessionManager;
 import pl.llp.aircasting.screens.common.sessionState.SessionDataAccessor;
@@ -103,7 +105,6 @@ import roboguice.inject.InjectorProvider;
 
 import static com.google.android.gms.common.api.GoogleApiClient.*;
 import static pl.llp.aircasting.Intents.startSensors;
-import static pl.llp.aircasting.screens.stream.map.LocationConversionHelper.geoPoint;
 
 public class NewAirCastingMapActivity extends FragmentActivity implements
         OnMapReadyCallback,
@@ -156,6 +157,7 @@ public class NewAirCastingMapActivity extends FragmentActivity implements
     protected GaugeHelper mGaugeHelper;
     @Inject
     public ResourceHelper resourceHelper;
+    @Inject SelectSensorHelper selectSensorHelper;
     @Inject
     public VisibleSession visibleSession;
     @Inject
@@ -183,7 +185,7 @@ public class NewAirCastingMapActivity extends FragmentActivity implements
     @Inject
     public LocationHelper locationHelper;
 
-    //导航栏右侧
+    //Navigation right
     private static final int ACTION_TOGGLE = 1;
     private static final int ACTION_CENTER = 2;
     private int mRequestedAction;
@@ -212,8 +214,6 @@ public class NewAirCastingMapActivity extends FragmentActivity implements
     private TileOverlay mOverlay;
     private HeatmapTileProvider mProvider;
     private LatLngBounds bounds;
-    double viewPortHeight;
-    double viewPortWidth;
     @Inject
     AveragesDriver averagesDriver;
     private int requestsOutstanding = 0;
@@ -442,9 +442,8 @@ public class NewAirCastingMapActivity extends FragmentActivity implements
 
 //            zoomOut.setOnClickListener(this);
 //            zoomIn.setOnClickListener(this);
-//            topBar.setOnClickListener(this);
             topBar.setOnClickListener(this);
-//            mGauges.setOnClickListener(this);
+            mGauges.setOnClickListener(this);
 
             initialized = true;
         }
@@ -539,16 +538,12 @@ public class NewAirCastingMapActivity extends FragmentActivity implements
     private void toggleHeatMapVisibility(MenuItem menuItem) {
         if (heatMapVisible) {
             heatMapVisible = false;
-//             mapView.getOverlays().remove(heatMapOverlay);
-
             heatMapOverlay.remoteOverlay();
             mapView.invalidate();
 
             menuItem.setIcon(R.drawable.toolbar_crowd_map_icon_inactive);
         } else {
             heatMapVisible = true;
-//            mapView.getOverlays().add(0, heatMapOverlay);
-
             updater = new HeatMapUpdater();
             updater.onMapIdle();
             mapView.invalidate();
@@ -647,13 +642,6 @@ public class NewAirCastingMapActivity extends FragmentActivity implements
 
         initGoogle();
         mMap.setMyLocationEnabled(true);
-
-        // Add a marker in Sydney and move the camera
-//        LatLng sydney = new LatLng(-34, 151);
-//        locationHelper.updateLocation(sydney);
-//        mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
-//        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
-
         mMap.setOnCameraChangeListener(new GoogleMap.OnCameraChangeListener() {
             @Override
             public void onCameraChange(CameraPosition position) {
@@ -847,11 +835,19 @@ public class NewAirCastingMapActivity extends FragmentActivity implements
             case R.id.top_bar:
                 Intents.thresholdsEditor(this, visibleSession.getSensor());
                 break;
-//            case R.id.gauge_container:
-//                showDialog(SelectSensorHelper.DIALOG_ID);
-//                break;
+            case R.id.gauge_container:
+                showDialog(SelectSensorHelper.DIALOG_ID);
+                break;
             default:
                 break;
+        }
+    }
+
+    @Override
+    protected Dialog onCreateDialog(int id) {
+        switch(id){
+            case SelectSensorHelper.DIALOG_ID: return selectSensorHelper.chooseSensor(this);
+            default: return super.onCreateDialog(id);
         }
     }
 
