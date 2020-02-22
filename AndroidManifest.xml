@@ -37,7 +37,6 @@
             android:launchMode="singleTask"
             android:screenOrientation="portrait"
             android:theme="@style/AirCastingTheme" />
-        <activity android:name=".screens.stream.map.AirCastingMapActivity2"></activity>
         <!-- Libraries -->
         <uses-library android:name="com.google.android.maps" />
 

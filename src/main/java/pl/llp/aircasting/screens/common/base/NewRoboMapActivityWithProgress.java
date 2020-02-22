@@ -1,9 +1,11 @@
 package pl.llp.aircasting.screens.common.base;
+
 import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
+import android.support.v4.app.FragmentActivity;
 import android.support.v7.app.AppCompatCallback;
 import android.support.v7.app.AppCompatDelegate;
 import android.support.v7.view.ActionMode;
@@ -11,7 +13,6 @@ import android.support.v7.widget.Toolbar;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.google.android.maps.MapActivity;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 
@@ -37,13 +38,8 @@ import roboguice.event.EventManager;
 import roboguice.inject.ContextScope;
 import roboguice.inject.InjectorProvider;
 
-/**
- * Created by IntelliJ IDEA.
- * User: obrok
- * Date: 1/16/12
- * Time: 12:35 PM
- */
-public abstract class RoboMapActivityWithProgress extends MapActivity implements ActivityWithProgress, AppCompatCallback, View.OnClickListener, InjectorProvider {
+public abstract class NewRoboMapActivityWithProgress extends FragmentActivity implements ActivityWithProgress, AppCompatCallback, View.OnClickListener, InjectorProvider {
+
     @Inject
     NavigationDrawerHelper navigationDrawerHelper;
     @Inject
@@ -94,8 +90,8 @@ public abstract class RoboMapActivityWithProgress extends MapActivity implements
 
     @Override
     public void onPostCreate(Bundle savedInstanceState) {
-       super.onPostCreate(savedInstanceState);
-       getDelegate().onPostCreate(savedInstanceState);
+        super.onPostCreate(savedInstanceState);
+        getDelegate().onPostCreate(savedInstanceState);
     }
 
     public void initToolbar(String title) {
@@ -137,10 +133,12 @@ public abstract class RoboMapActivityWithProgress extends MapActivity implements
     }
 
     @Override
-    public void onSupportActionModeStarted(ActionMode mode) { }
+    public void onSupportActionModeStarted(ActionMode mode) {
+    }
 
     @Override
-    public void onSupportActionModeFinished(ActionMode mode) { }
+    public void onSupportActionModeFinished(ActionMode mode) {
+    }
 
     @Override
     public ActionMode onWindowStartingSupportActionMode(ActionMode.Callback callback) {
@@ -151,14 +149,10 @@ public abstract class RoboMapActivityWithProgress extends MapActivity implements
         signInOrOut();
     }
 
-    private void signInOrOut()
-    {
-        if (settingsHelper.hasCredentials())
-        {
+    private void signInOrOut() {
+        if (settingsHelper.hasCredentials()) {
             startActivity(new Intent(this, SignOutActivity.class));
-        }
-        else
-        {
+        } else {
             startActivity(new Intent(this, ProfileActivity.class));
         }
     }
@@ -184,10 +178,10 @@ public abstract class RoboMapActivityWithProgress extends MapActivity implements
         eventManager.fire(new OnContentViewAvailableEvent());
     }
 
-    @Override
-    public Object onRetainNonConfigurationInstance() {
-        return task;
-    }
+//    @Override
+//    public Object onRetainNonConfigurationInstance() {
+//        return task;
+//    }
 
     @Override
     protected void onRestart() {
@@ -219,7 +213,7 @@ public abstract class RoboMapActivityWithProgress extends MapActivity implements
     }
 
     @Override
-    public void onNewIntent( Intent intent ) {
+    public void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         scope.enter(this);
         eventManager.fire(new OnNewIntentEvent());

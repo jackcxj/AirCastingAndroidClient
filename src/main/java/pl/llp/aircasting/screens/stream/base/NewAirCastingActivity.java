@@ -1,22 +1,3 @@
-/**
- AirCasting - Share your Air!
- Copyright (C) 2011-2012 HabitatMap, Inc.
-
- This program is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
-
- This program is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License
- along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
- You can contact the authors by email at <info@habitatmap.org>
- */
 package pl.llp.aircasting.screens.stream.base;
 
 import android.content.Intent;
@@ -54,7 +35,7 @@ import roboguice.inject.InjectView;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public abstract class AirCastingActivity extends AirCastingBaseActivity implements View.OnClickListener {
+public abstract class NewAirCastingActivity extends NewAirCastingBaseActivity implements View.OnClickListener {
     public static final String NOTE_INDEX = "noteIndex";
     public static final String VISIBLE_SESSION_ID = "visibleSessionId";
     public static final String VISIBLE_SENSOR_ID = "visibleSensorId";
@@ -112,17 +93,14 @@ public abstract class AirCastingActivity extends AirCastingBaseActivity implemen
     private void initialize() {
         if (!initialized) {
             mGauges = findViewById(R.id.gauge_container);
+            topBar = findViewById(R.id.top_bar);
 
             if (mGaugeHelper == null) {
                 mGaugeHelper = new GaugeHelper(this, mGauges, resourceHelper, visibleSession, sessionData);
             }
 
-            zoomOut.setOnClickListener(this);
-            zoomIn.setOnClickListener(this);
             topBar.setOnClickListener(this);
-
             mGauges.setOnClickListener(this);
-
             initialized = true;
         }
     }
@@ -227,12 +205,14 @@ public abstract class AirCastingActivity extends AirCastingBaseActivity implemen
         MenuInflater inflater = getDelegate().getMenuInflater();
 
         if (currentSessionManager.isSessionIdle()) {
-            inflater.inflate(R.menu.toolbar_autoupload_permission, menu);
             inflater.inflate(R.menu.toolbar_start_recording, menu);
-        } else if (currentSessionManager.isSessionRecording()) {
+        } else if (currentSessionManager.isSessionRecording()){
             inflater.inflate(R.menu.toolbar_stop_recording, menu);
             inflater.inflate(R.menu.toolbar_make_note, menu);
+        } else {
+            return true;
         }
+
         return true;
     }
 

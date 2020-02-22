@@ -4,6 +4,7 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Dialog;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
@@ -16,18 +17,19 @@ import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.AppCompatCallback;
 import android.support.v7.app.AppCompatDelegate;
-import android.support.v7.view.ActionMode;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.animation.Animation;
+import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
@@ -61,14 +63,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import pl.llp.aircasting.Intents;
 import pl.llp.aircasting.R;
-import pl.llp.aircasting.event.measurements.MobileMeasurementEvent;
-import pl.llp.aircasting.event.sensor.AudioReaderErrorEvent;
-import pl.llp.aircasting.event.sensor.FixedSensorEvent;
-import pl.llp.aircasting.event.sensor.SensorConnectedEvent;
-import pl.llp.aircasting.event.sensor.SensorEvent;
-import pl.llp.aircasting.event.sensor.ThresholdSetEvent;
+import pl.llp.aircasting.event.sensor.LocationEvent;
+import pl.llp.aircasting.event.session.NoteCreatedEvent;
 import pl.llp.aircasting.event.session.VisibleSessionUpdatedEvent;
 import pl.llp.aircasting.event.ui.VisibleStreamUpdatedEvent;
+import pl.llp.aircasting.model.Measurement;
 import pl.llp.aircasting.model.Sensor;
 import pl.llp.aircasting.model.internal.Region;
 import pl.llp.aircasting.model.internal.MeasurementLevel;
@@ -90,57 +89,27 @@ import pl.llp.aircasting.screens.common.sessionState.VisibleSession;
 import pl.llp.aircasting.screens.stream.GaugeHelper;
 import pl.llp.aircasting.screens.stream.MeasurementPresenter;
 import pl.llp.aircasting.screens.stream.TopBarHelper;
+import pl.llp.aircasting.screens.stream.base.NewAirCastingActivity;
 import pl.llp.aircasting.sensor.common.ThresholdsHolder;
 import pl.llp.aircasting.sessionSync.SyncBroadcastReceiver;
 import pl.llp.aircasting.storage.UnfinishedSessionChecker;
-import roboguice.activity.event.OnCreateEvent;
-import roboguice.activity.event.OnPauseEvent;
-import roboguice.activity.event.OnResumeEvent;
-import roboguice.activity.event.OnStopEvent;
 import roboguice.application.RoboApplication;
 import roboguice.event.EventManager;
 import roboguice.inject.ContextScope;
+import roboguice.inject.InjectResource;
+import roboguice.inject.InjectView;
 import roboguice.inject.InjectorProvider;
 
-
 import static com.google.android.gms.common.api.GoogleApiClient.*;
-import static pl.llp.aircasting.Intents.startSensors;
+import static pl.llp.aircasting.screens.common.helpers.LocationHelper.REQUEST_CHECK_SETTINGS;
 
-public class NewAirCastingMapActivity extends FragmentActivity implements
+public class NewAirCastingMapActivity extends NewAirCastingActivity implements
         OnMapReadyCallback,
         ConnectionCallbacks,
         OnConnectionFailedListener,
         LocationListener,
-        AppCompatCallback, InjectorProvider, View.OnClickListener, LocationHelper.LocationSettingsListener {
+        AppCompatCallback, InjectorProvider, View.OnClickListener, LocationHelper.LocationSettingsListener, MeasurementPresenter.Listener {
 
-
-    // 添加导航栏和顶部
-    public AppCompatDelegate delegate;
-    public Toolbar toolbar;
-    @Inject
-    NavigationDrawerHelper navigationDrawerHelper;
-    protected EventManager eventManager;
-    protected ContextScope scope;
-
-    // 添加地图组件
-    private GoogleMap mMap;
-    private GoogleApiClient googleApiClient;
-    private LocationRequest locationRequest;
-    private Location lastLocation;
-    private Marker currentUserLocationMarker;
-    private static final int Request_User_Location_Code = 99;
-    private View mapView;
-
-    // 添加数据
-    private ToggleAircastingManager toggleAircastingManager;
-    private boolean initialized = false;
-    @Inject
-    ToggleAircastingManagerFactory aircastingHelperFactory;
-    @Inject
-    SyncBroadcastReceiver syncBroadcastReceiver;
-    SyncBroadcastReceiver registeredReceiver;
-    @Inject
-    EventBus eventBus;
     @Inject
     public CurrentSessionManager currentSessionManager;
     @Inject
@@ -148,42 +117,44 @@ public class NewAirCastingMapActivity extends FragmentActivity implements
     private long lastChecked = 0;
     public static final long DELTA = TimeUnit.SECONDS.toMillis(15);
     @Inject
-    UnfinishedSessionChecker checker;
-    @Inject
-    ViewingSessionsManager viewingSessionsManager;
-    @Inject
     public Context context;
-    protected View mGauges;
     protected GaugeHelper mGaugeHelper;
     @Inject
     public ResourceHelper resourceHelper;
-    @Inject SelectSensorHelper selectSensorHelper;
+    @Inject
+    SelectSensorHelper selectSensorHelper;
     @Inject
     public VisibleSession visibleSession;
     @Inject
-    SessionDataAccessor sessionData;
-    private Handler handler = new Handler();
-
-    private Thread pollServerTask = new Thread(new Runnable() {
-        @Override
-        public void run() {
-            Intents.triggerStreamingSessionsSync(context);
-
-            handler.postDelayed(pollServerTask, 60000);
-        }
-    });
-    final AtomicBoolean noUpdateInProgress = new AtomicBoolean(true);
-    @Inject
     public SettingsHelper settingsHelper;
-    @Inject
-    TopBarHelper topBarHelper;
-    private View topBar;
     @Inject
     ConnectivityManager connectivityManager;
     @Inject
     MeasurementPresenter measurementPresenter;
     @Inject
     public LocationHelper locationHelper;
+    @Inject
+    ThresholdsHolder thresholds;
+    @Inject
+    NewHeatMapOverlay heatMapOverlay;
+    @Inject
+    AveragesDriver averagesDriver;
+    @InjectView(R.id.spinner)
+    ImageView spinner;
+    @InjectResource(R.anim.spinner)
+    Animation spinnerAnimation;
+    // 添加导航栏和顶部
+    public Toolbar toolbar;
+
+    // 添加地图组件
+    private GoogleMap mMap;
+    private GoogleApiClient googleApiClient;
+    private static final int Request_User_Location_Code = 99;
+    private View mapView;
+
+    // 添加数据
+    private boolean zoomToSession = true;
+    private boolean soundTraceComplete = true;
 
     //Navigation right
     private static final int ACTION_TOGGLE = 1;
@@ -199,23 +170,17 @@ public class NewAirCastingMapActivity extends FragmentActivity implements
     private SessionDataAccessor mSessionData;
     private VisibleSession mVisibleSession;
     private Sensor mSensor;
-    private double nowData;
-    @Inject
-    ThresholdsHolder thresholds;
     private int very_low, low, mid, high, very_high;
     private int[] colors;
     private Location mLastLocation;
 
     //heatmapoverlay
+    private static final String HEAT_MAP_VISIBLE = "heat_map_visible";
     private boolean heatMapVisible = false;
-    @Inject
-    NewHeatMapOverlay heatMapOverlay;
     public DrawerLayout drawerLayout;
     private TileOverlay mOverlay;
     private HeatmapTileProvider mProvider;
     private LatLngBounds bounds;
-    @Inject
-    AveragesDriver averagesDriver;
     private int requestsOutstanding = 0;
     private HeatMapUpdater updater;
 
@@ -225,15 +190,6 @@ public class NewAirCastingMapActivity extends FragmentActivity implements
         super.onCreate(savedInstanceState);
 
         drawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
-
-        final Injector injector = getInjector();
-        eventManager = injector.getInstance(EventManager.class);
-        scope = injector.getInstance(ContextScope.class);
-        scope.enter(this);
-        injector.injectMembers(this);
-        eventManager.fire(new OnCreateEvent(savedInstanceState));
-
-        getDelegate().onCreate(savedInstanceState);
 
         setContentView(R.layout.new_map);
 
@@ -265,221 +221,42 @@ public class NewAirCastingMapActivity extends FragmentActivity implements
         initNavigationDrawer();
     }
 
-    public void initToolbar(String title) {
-        toolbar = (Toolbar) findViewById(R.id.toolbar);
-        toolbar.setNavigationIcon(R.drawable.navigation_empty_icon);
-        toolbar.setContentInsetStartWithNavigation(0);
-        getDelegate().setSupportActionBar(toolbar);
-        getDelegate().setTitle(title);
-    }
-
-    public AppCompatDelegate getDelegate() {
-        if (delegate == null) {
-            delegate = AppCompatDelegate.create(this, this);
-        }
-        return delegate;
-    }
-
-    @Override
-    public void onSupportActionModeStarted(ActionMode mode) {
-    }
-
-    @Override
-    public void onSupportActionModeFinished(ActionMode mode) {
-    }
-
-    @Override
-    public ActionMode onWindowStartingSupportActionMode(ActionMode.Callback callback) {
-        return null;
-    }
-
-    public void initNavigationDrawer() {
-        navigationDrawerHelper.initNavigationDrawer(toolbar, this);
-    }
-
-    @Override
-    public Injector getInjector() {
-        return ((RoboApplication) getApplication()).getInjector();
-    }
-
-    @Override
-    protected void onResume() {
-        // RoboMapActivityWithProgress
-        scope.enter(this);
-        super.onResume();
-        eventManager.fire(new OnResumeEvent());
-
-        // AirCastingBaseActivity
-        initialize_Base();
-
-        registerReceiver(syncBroadcastReceiver, SyncBroadcastReceiver.INTENT_FILTER);
-        registeredReceiver = syncBroadcastReceiver;
-
-        eventBus.register(this);
-        checkForUnfinishedSessions();
-
-        if (viewingSessionsManager.anySessionPresent() || currentSessionManager.anySensorConnected()) {
-            startSensors(context);
-        }
-        // AirCastingActivity
-        initialize_AirCasting();
-
-        startUpdatingFixedSessions();
-
-        updateGauges();
-        updateKeepScreenOn();
-        topBarHelper.updateTopBar(visibleSession.getSensor(), topBar);
-        Intents.startIOIO(context);
-        Intents.startDatabaseWriterService(context);
-
-        // AirCastingMapActivity
-//        initialize();
-//        refreshNotes();
-//        spinnerAnimation.start();
-//        initializeMap();
-//        measurementPresenter.registerListener(this);
-//        initializeRouteOverlay();
-//        traceOverlay.startDrawing();
-//        traceOverlay.refresh(mapView);
-
-        checkConnection();
-//        updater = new HeatMapUpdater();
-//        heatMapDetector = detectMapIdle(mapView, HEAT_MAP_UPDATE_TIMEOUT, updater);
-//        soundTraceDetector = detectMapIdle(mapView, SOUND_TRACE_UPDATE_TIMEOUT, this);
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-
-        handler.removeCallbacks(pollServerTask);
-        if (viewingSessionsManager.sessionsEmpty() && !currentSessionManager.isSessionRecording()) {
-            Intents.stopSensors(this);
-        }
-
-        if (registeredReceiver != null) {
-            unregisterReceiver(syncBroadcastReceiver);
-            registeredReceiver = null;
-        }
-        eventBus.unregister(this);
-
-        eventManager.fire(new OnPauseEvent());
-
-//        routeRefreshDetector.stop();
-//        traceOverlay.stopDrawing(mapView);
-//        heatMapDetector.stop();
-//        soundTraceDetector.stop();
-    }
-
-    @Override
-    public void onStop() {
-        super.onStop();
-        scope.enter(this);
-        try {
-            eventManager.fire(new OnStopEvent());
-        } finally {
-            scope.exit(this);
-            super.onStop();
-        }
-        getDelegate().onStop();
-
-        navigationDrawerHelper.removeHeader();
-
-        googleApiClient.disconnect();
-
-    }
-
     @Override
     public void onPostResume() {
         super.onPostResume();
         getDelegate().invalidateOptionsMenu();
-        navigationDrawerHelper.removeHeader();
-        navigationDrawerHelper.setDrawerHeader();
     }
 
-    private void initialize_Base() {
-        toggleAircastingManager = aircastingHelperFactory.getAircastingHelper(this, getDelegate());
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
 
-//        if (!initialized) {
-//            initialized = true;
-//        }
+        outState.putBoolean(HEAT_MAP_VISIBLE, heatMapVisible);
     }
 
-    private void checkForUnfinishedSessions() {
-        if (shouldCheckForUnfinishedSessions()) {
-            new AsyncTask<Void, Void, Void>() {
-                @Override
-                protected Void doInBackground(Void... voids) {
-                    checker.finishIfNeeded(NewAirCastingMapActivity.this);
-                    lastChecked = System.currentTimeMillis();
-                    return null;
-                }
-            }.execute();
-        }
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+
+        zoomToSession = false;
+        heatMapVisible = savedInstanceState.getBoolean(HEAT_MAP_VISIBLE);
     }
 
-    private boolean shouldCheckForUnfinishedSessions() {
-        if (currentSessionManager.isSessionRecording()) {
-            return false;
-        }
 
-        if (state.saving().isSaving()) {
-            return false;
-        }
+    private void toggleHeatMapVisibility(MenuItem menuItem) {
+        if (heatMapVisible) {
+            heatMapVisible = false;
+            heatMapOverlay.remoteOverlay();
+            mapView.invalidate();
 
-        long timeout = System.currentTimeMillis() - lastChecked;
-        return timeout > DELTA;
-    }
-
-    private void initialize_AirCasting() {
-        if (!initialized) {
-            mGauges = findViewById(R.id.gauge_container);
-
-            topBar = findViewById(R.id.top_bar);
-            if (mGaugeHelper == null) {
-                mGaugeHelper = new GaugeHelper(this, mGauges, resourceHelper, visibleSession, sessionData);
-            }
-
-//            zoomOut.setOnClickListener(this);
-//            zoomIn.setOnClickListener(this);
-            topBar.setOnClickListener(this);
-            mGauges.setOnClickListener(this);
-
-            initialized = true;
-        }
-    }
-
-    private void startUpdatingFixedSessions() {
-        if (viewingSessionsManager.isAnySessionFixed()) {
-            handler.post(pollServerTask);
-        }
-    }
-
-    protected void updateGauges() {
-        if (noUpdateInProgress.get()) {
-            noUpdateInProgress.set(false);
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    mGaugeHelper.updateGaugesFromSensor();
-                    noUpdateInProgress.set(true);
-                }
-            });
-        }
-    }
-
-    private void updateKeepScreenOn() {
-        if (settingsHelper.isKeepScreenOn()) {
-            getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            menuItem.setIcon(R.drawable.toolbar_crowd_map_icon_inactive);
         } else {
-            getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        }
-    }
+            heatMapVisible = true;
+            updater = new HeatMapUpdater();
+            updater.onMapIdle();
+            mapView.invalidate();
+            menuItem.setIcon(R.drawable.toolbar_crowd_map_icon_active);
 
-    private void checkConnection() {
-        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
-        if (activeNetworkInfo == null || !activeNetworkInfo.isConnectedOrConnecting()) {
-            ToastHelper.show(this, R.string.no_internet, Toast.LENGTH_SHORT);
         }
     }
 
@@ -488,23 +265,11 @@ public class NewAirCastingMapActivity extends FragmentActivity implements
         super.onPrepareOptionsMenu(menu);
 
         MenuInflater inflater = getDelegate().getMenuInflater();
-
-        if (currentSessionManager.isSessionIdle()) {
-            inflater.inflate(R.menu.toolbar_autoupload_permission, menu);
-            inflater.inflate(R.menu.toolbar_start_recording, menu);
-        } else if (currentSessionManager.isSessionRecording()) {
-            inflater.inflate(R.menu.toolbar_stop_recording, menu);
-            inflater.inflate(R.menu.toolbar_make_note, menu);
-        } else {
-            return true;
-        }
-
         inflater.inflate(R.menu.toolbar_crowd_map_toggle, menu);
 
         if (heatMapVisible) {
             menu.getItem(menu.size() - 1).setIcon(R.drawable.toolbar_crowd_map_icon_active);
         }
-
         return true;
     }
 
@@ -535,30 +300,103 @@ public class NewAirCastingMapActivity extends FragmentActivity implements
         return true;
     }
 
-    private void toggleHeatMapVisibility(MenuItem menuItem) {
-        if (heatMapVisible) {
-            heatMapVisible = false;
-            heatMapOverlay.remoteOverlay();
-            mapView.invalidate();
-
-            menuItem.setIcon(R.drawable.toolbar_crowd_map_icon_inactive);
-        } else {
-            heatMapVisible = true;
-            updater = new HeatMapUpdater();
-            updater.onMapIdle();
-            mapView.invalidate();
-            menuItem.setIcon(R.drawable.toolbar_crowd_map_icon_active);
-
-        }
+    @Override
+    protected void onResume() {
+        super.onResume();
+        refreshNotes();
+        spinnerAnimation.start();
+        checkConnection();
+        initializeMap();
+        measurementPresenter.registerListener(this);
+        initializeRouteOverlay();
+        updater = new HeatMapUpdater();
     }
 
+    public void initToolbar(String title) {
+        toolbar = (Toolbar) findViewById(R.id.toolbar);
+        toolbar.setNavigationIcon(R.drawable.navigation_empty_icon);
+        toolbar.setContentInsetStartWithNavigation(0);
+        getDelegate().setSupportActionBar(toolbar);
+        getDelegate().setTitle(title);
+    }
+
+    @Override
+    public Injector getInjector() {
+        return ((RoboApplication) getApplication()).getInjector();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+//        routeRefreshDetector.stop();
+//        traceOverlay.stopDrawing(mapView);
+//        heatMapDetector.stop();
+//        soundTraceDetector.stop();
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        measurementPresenter.unregisterListener(this);
+        googleApiClient.disconnect();
+    }
+
+    private void initializeRouteOverlay() {
+//        routeOverlay.clear();
+
+        if (shouldShowRoute()) {
+            Sensor sensor = visibleSession.getSensor();
+            List<Measurement> measurements = visibleSession.getMeasurements(sensor);
+
+            for (Measurement measurement : measurements) {
+                LatLng latlng = new LatLng(measurement.getLatitude(), measurement.getLongitude());
+                addPoint(latlng);
+            }
+        }
+
+//        routeRefreshDetector = detectMapIdle(mapView, 100, new MapIdleDetector.MapIdleListener() {
+//            @Override
+//            public void onMapIdle() {
+//                runOnUiThread(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        routeOverlay.invalidate();
+//                        mapView.invalidate();
+//                    }
+//                });
+//            }
+//        });
+    }
+
+    private boolean shouldShowRoute() {
+        return settingsHelper.isShowRoute() &&
+                (visibleSession.isVisibleSessionRecording() || visibleSession.isVisibleSessionViewed());
+    }
+
+    private void initializeMap() {
+        if (settingsHelper.isFirstLaunch()) {
+            Location location = locationHelper.getLastLocation();
+            if (location != null) {
+                CameraUpdateFactory.newLatLng(new LatLng(location.getLatitude(),location.getLongitude()));
+            }
+            settingsHelper.setFirstLaunch(false);
+        }
+    }
 
     @Override
     public void onLocationSettingsSatisfied() {
         if (mRequestedAction == ACTION_TOGGLE) {
             toggleSessionRecording();
         } else if (mRequestedAction == ACTION_CENTER) {
-//            centerMap();
+            centerMap();
+        }
+    }
+
+    private void checkConnection() {
+        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+        if (activeNetworkInfo == null || !activeNetworkInfo.isConnectedOrConnecting()) {
+            ToastHelper.show(this, R.string.no_internet, Toast.LENGTH_SHORT);
         }
     }
 
@@ -572,59 +410,144 @@ public class NewAirCastingMapActivity extends FragmentActivity implements
         mapView.invalidate();
     }
 
-    public synchronized void toggleAirCasting() {
-        toggleAircastingManager.toggleAirCasting();
-        getDelegate().invalidateOptionsMenu();
-
-        measurementPresenter.reset();
+    protected void startSpinner() {
+        if (spinner.getVisibility() != View.VISIBLE) {
+            spinner.setVisibility(View.VISIBLE);
+            spinner.setAnimation(spinnerAnimation);
+        }
     }
 
-
-    @Subscribe
-    public void onEvent(MobileMeasurementEvent event) {
-        updateGauges();
+    protected void stopSpinner() {
+        spinner.setVisibility(View.INVISIBLE);
+        spinner.setAnimation(null);
     }
 
-    @Subscribe
-    public void onEvent(VisibleSessionUpdatedEvent event) {
-        updateGauges();
+    private void refresh() {
+        boolean complete = (requestsOutstanding == 0) && soundTraceComplete;
+        if (complete) {
+            stopSpinner();
+        } else {
+            startSpinner();
+        }
+        if (!complete) mapView.invalidate();
     }
 
-    @Subscribe
-    public void onEvent(SensorEvent event) {
-        updateGauges();
-    }
+//    @Override
+//    public void onMapIdle() {
+//        runOnUiThread(new Runnable() {
+//            @Override
+//            public void run() {
+//                refreshSoundTrace();
+//            }
+//        });
+//    }
 
-    @Subscribe
-    public void onEvent(FixedSensorEvent event) {
-        updateGauges();
-    }
+    private void refreshSoundTrace() {
+        soundTraceComplete = false;
+        refresh();
 
-    @Subscribe
-    public void onEvent(ThresholdSetEvent event) {
-        updateGauges();
-    }
-
-    @Subscribe
-    public void onEvent(SensorConnectedEvent event) {
-        invalidateOptionsMenu();
-    }
-
-    @Subscribe
-    public void onEvent(AudioReaderErrorEvent event) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                ToastHelper.show(context, R.string.mic_error, Toast.LENGTH_LONG);
-            }
-        });
+        soundTraceComplete = true;
+        mapView.invalidate();
+        refresh();
     }
 
     @Subscribe
     public void onEvent(VisibleStreamUpdatedEvent event) {
-        topBarHelper.updateTopBar(event.getSensor(), topBar);
-        updateGauges();
-        updater.onMapIdle();
+        super.onEvent(event);
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mapView.invalidate();
+            }
+        });
+//        updater.onMapIdle();
+//        onMapIdle();
+    }
+
+    @Subscribe
+    public void onEvent(VisibleSessionUpdatedEvent event) {
+        super.onEvent(event);
+        refreshNotes();
+        mapView.invalidate();
+    }
+
+    @Subscribe
+    public void onEvent(NoteCreatedEvent event) {
+        refreshNotes();
+    }
+
+    @Subscribe
+    public void onEvent(MotionEvent event) {
+        mapView.dispatchTouchEvent(event);
+    }
+
+    @Subscribe
+    public void onEvent(LocationEvent event) {
+//        updateRoute();
+        mapView.invalidate();
+    }
+
+    protected void centerMap() {
+        if (locationHelper.getLastLocation() != null) {
+            Location location = locationHelper.getLastLocation();
+            CameraUpdateFactory.newLatLng(new LatLng(location.getLatitude(),location.getLongitude()));
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        switch (requestCode) {
+            case REQUEST_CHECK_SETTINGS:
+                if (resultCode != RESULT_OK) {
+                    ToastHelper.show(this, R.string.enable_location, Toast.LENGTH_LONG);
+                } else {
+                    locationHelper.startLocationUpdates();
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException e) {
+                    }
+                    onLocationSettingsSatisfied();
+                }
+                break;
+            default:
+                super.onActivityResult(requestCode, resultCode, data);
+        }
+    }
+
+    @Override
+    protected void refreshNotes() {
+//        noteOverlay.clear();
+//        for (Note note : visibleSession.getSessionNotes()) {
+//            noteOverlay.add(note);
+//        }
+    }
+
+    @Override
+    public void onViewUpdated() {
+
+    }
+
+    @Override
+    public void onAveragedMeasurement(Measurement measurement) {
+//        if (currentSessionManager.isSessionRecording()) {
+//            if (!settingsHelper.isAveraging()) {
+//                traceOverlay.update(measurement);
+//            } else if (lastMeasurement != null) {
+//                traceOverlay.update(lastMeasurement);
+//            }
+//        }
+//
+//        if (settingsHelper.isAveraging()) {
+//            lastMeasurement = measurement;
+//        }
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mapView.invalidate();
+            }
+        });
     }
 
     /**
@@ -673,6 +596,45 @@ public class NewAirCastingMapActivity extends FragmentActivity implements
         }
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        switch (requestCode) {
+            case Request_User_Location_Code:
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                        if (googleApiClient == null) {
+                            initGoogle();
+                        }
+                        mMap.setMyLocationEnabled(true);
+                    }
+                } else {
+                    Toast.makeText(this, "Permission Denied...", Toast.LENGTH_SHORT).show();
+                }
+        }
+    }
+
+    void initGoogle() {
+        googleApiClient = new GoogleApiClient.Builder(this)
+                .enableAutoManage(this /* FragmentActivity */,
+                        this /* OnConnectionFailedListener */)
+                .addConnectionCallbacks(this)
+                .addApi(LocationServices.API)
+                .build();
+
+        googleApiClient.connect();
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+        Log.i("LocationFragment", "Connection failed: ConnectionResult.getErrorCode() " + connectionResult.getErrorCode());
+    }
+
+    @Override
+    public void onConnected(@Nullable Bundle bundle) {
+        startLocation();
+    }
+
     private double getNowData() {
         mSessionData = mGaugeHelper.getsessionData();
         mVisibleSession = mGaugeHelper.getVisibleSession();
@@ -719,13 +681,13 @@ public class NewAirCastingMapActivity extends FragmentActivity implements
 
         Gradient gradient = new Gradient(colors, startPoints);
 
-// Create the tile provider.
+        // Create the tile provider.
         mProvider = new HeatmapTileProvider.Builder()
                 .data(list)
                 .gradient(gradient)
                 .build();
 
-// Add the tile overlay to the map.
+        // Add the tile overlay to the map.
         mOverlay = mMap.addTileOverlay(new TileOverlayOptions().tileProvider(mProvider));
 
     }
@@ -768,45 +730,6 @@ public class NewAirCastingMapActivity extends FragmentActivity implements
         }
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        switch (requestCode) {
-            case Request_User_Location_Code:
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-
-                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                        if (googleApiClient == null) {
-                            initGoogle();
-                        }
-                        mMap.setMyLocationEnabled(true);
-                    }
-                } else {
-                    Toast.makeText(this, "Permission Denied...", Toast.LENGTH_SHORT).show();
-                }
-        }
-    }
-
-    void initGoogle() {
-        googleApiClient = new GoogleApiClient.Builder(this)
-                .enableAutoManage(this /* FragmentActivity */,
-                        this /* OnConnectionFailedListener */)
-                .addConnectionCallbacks(this)
-                .addApi(LocationServices.API)
-                .build();
-
-        googleApiClient.connect();
-    }
-
-    @Override
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-        Log.i("LocationFragment", "Connection failed: ConnectionResult.getErrorCode() " + connectionResult.getErrorCode());
-    }
-
-    @Override
-    public void onConnected(@Nullable Bundle bundle) {
-        startLocation();
-    }
-
     private void startLocation() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -830,24 +753,12 @@ public class NewAirCastingMapActivity extends FragmentActivity implements
     }
 
     @Override
-    public void onClick(View view) {
-        switch (view.getId()) {
-            case R.id.top_bar:
-                Intents.thresholdsEditor(this, visibleSession.getSensor());
-                break;
-            case R.id.gauge_container:
-                showDialog(SelectSensorHelper.DIALOG_ID);
-                break;
-            default:
-                break;
-        }
-    }
-
-    @Override
     protected Dialog onCreateDialog(int id) {
-        switch(id){
-            case SelectSensorHelper.DIALOG_ID: return selectSensorHelper.chooseSensor(this);
-            default: return super.onCreateDialog(id);
+        switch (id) {
+            case SelectSensorHelper.DIALOG_ID:
+                return selectSensorHelper.chooseSensor(this);
+            default:
+                return super.onCreateDialog(id);
         }
     }
 
