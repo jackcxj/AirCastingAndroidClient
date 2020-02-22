@@ -93,7 +93,7 @@ public abstract class NewAirCastingActivity extends NewAirCastingBaseActivity im
     private void initialize() {
         if (!initialized) {
             mGauges = findViewById(R.id.gauge_container);
-            topBar = findViewById(R.id.top_bar);
+//            topBar = findViewById(R.id.top_bar);
 
             if (mGaugeHelper == null) {
                 mGaugeHelper = new GaugeHelper(this, mGauges, resourceHelper, visibleSession, sessionData);

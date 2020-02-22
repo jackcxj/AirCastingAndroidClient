@@ -13,14 +13,12 @@ import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.AppCompatCallback;
-import android.support.v7.app.AppCompatDelegate;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
@@ -45,10 +43,8 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
-import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.TileOverlay;
 import com.google.android.gms.maps.model.TileOverlayOptions;
-import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
@@ -59,7 +55,6 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import pl.llp.aircasting.Intents;
 import pl.llp.aircasting.R;
@@ -75,27 +70,18 @@ import pl.llp.aircasting.networking.drivers.AveragesDriver;
 import pl.llp.aircasting.networking.httpUtils.HttpResult;
 import pl.llp.aircasting.screens.common.ApplicationState;
 import pl.llp.aircasting.screens.common.ToastHelper;
-import pl.llp.aircasting.screens.common.ToggleAircastingManager;
-import pl.llp.aircasting.screens.common.ToggleAircastingManagerFactory;
 import pl.llp.aircasting.screens.common.helpers.LocationHelper;
-import pl.llp.aircasting.screens.common.helpers.NavigationDrawerHelper;
 import pl.llp.aircasting.screens.common.helpers.ResourceHelper;
 import pl.llp.aircasting.screens.common.helpers.SelectSensorHelper;
 import pl.llp.aircasting.screens.common.helpers.SettingsHelper;
 import pl.llp.aircasting.screens.common.sessionState.CurrentSessionManager;
 import pl.llp.aircasting.screens.common.sessionState.SessionDataAccessor;
-import pl.llp.aircasting.screens.common.sessionState.ViewingSessionsManager;
 import pl.llp.aircasting.screens.common.sessionState.VisibleSession;
 import pl.llp.aircasting.screens.stream.GaugeHelper;
 import pl.llp.aircasting.screens.stream.MeasurementPresenter;
-import pl.llp.aircasting.screens.stream.TopBarHelper;
 import pl.llp.aircasting.screens.stream.base.NewAirCastingActivity;
 import pl.llp.aircasting.sensor.common.ThresholdsHolder;
-import pl.llp.aircasting.sessionSync.SyncBroadcastReceiver;
-import pl.llp.aircasting.storage.UnfinishedSessionChecker;
 import roboguice.application.RoboApplication;
-import roboguice.event.EventManager;
-import roboguice.inject.ContextScope;
 import roboguice.inject.InjectResource;
 import roboguice.inject.InjectView;
 import roboguice.inject.InjectorProvider;
@@ -248,7 +234,6 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
             heatMapVisible = false;
             heatMapOverlay.remoteOverlay();
             mapView.invalidate();
-
             menuItem.setIcon(R.drawable.toolbar_crowd_map_icon_inactive);
         } else {
             heatMapVisible = true;
@@ -308,7 +293,7 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
         checkConnection();
         initializeMap();
         measurementPresenter.registerListener(this);
-        initializeRouteOverlay();
+//        initializeRouteOverlay();
         updater = new HeatMapUpdater();
     }
 

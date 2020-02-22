@@ -133,13 +133,10 @@ public class StartMobileSessionActivity extends DialogActivity implements View.O
 
         session = currentSessionManager.getCurrentSession();
 
-        Log.i("stopAirCasting", "all good");
-
         new Thread() {
             @Override
             public void run() {
                 while (currentSessionManager.isSessionRecording()) {
-                    Log.i("loadSession", "all good");
                     try {
                         Thread.sleep(4000);
                         File file = prepareCSV(StartMobileSessionActivity.this, session);
@@ -158,8 +155,8 @@ public class StartMobileSessionActivity extends DialogActivity implements View.O
             @Override
             public void run() {
                 try {
-                    client = new Socket("10.12.251.92", 8888);
-                    Log.i("uploadFile", "connect successful");
+                    client = new Socket("10.12.254.239", 8899);
+                    Log.i("Connect the server", "successful");
                     byte[] mybytearray = new byte[(int) file.length()]; //create a byte array to file
 
                     fileInputStream = new FileInputStream(file);
