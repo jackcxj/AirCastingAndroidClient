@@ -1,7 +1,21 @@
+/**
+ * Author:  ANONYMOUS
+ * Purpose: Evaluate a Cribbage hand containing four cards + a Starting card.
+ * Project: COMP90041 Semester 2 2018 Project
+ *
+ * This class contains a main method which evaluates a Cribbage Hand.
+ * This is achieved by entering a hand into the command line in the form of
+ * two-character Strings, which are then translated into 'Card' objects.
+ *
+ * evaluateHand() takes an array of Cards and calculates the total number of
+ * points gained given the rules of Cribbage.
+ *
+ * This class expects there to be 4 cards in a hand, plus an additional 5th
+ * Starting Card, or 'S/C' as it is referred to in the comments.
+ */
 package pl.llp.aircasting.screens.stream.map;
 
 import android.graphics.Color;
-import android.util.Log;
 
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.model.LatLng;
@@ -22,10 +36,22 @@ import pl.llp.aircasting.sensor.common.ThresholdsHolder;
 
 public class NewHeatMapOverlay {
 
-    private static final int ALPHA = 100;
     private TileOverlay mOverlay_green, mOverlay_yellow, mOverlay_orange, mOverlay_red;
     private HeatmapTileProvider mProvider_green, mProvider_yellow, mProvider_orange, mProvider_red;
     private int very_low, low, mid, high, very_high;
+    private boolean is_green, is_yellow, is_orange, is_red = false;
+    private final float[] startPoints = {0.2f, 0.5f, 1.0f};
+    private final float transparency = 0.5f;
+    private final double opacity = 0.7;
+    private final double opacity_red = 0.8;
+    private final int[] color_green = new int[]{Color.rgb(152,251,152),
+            Color.rgb(144,238,144), Color.rgb(101, 198, 138)}; // green
+    private final int[] color_yellow = new int[]{Color.rgb( 255,255,240),
+            Color.rgb(255,255,224), Color.rgb(254, 230, 101)}; // yellow
+    private final int[] color_orange = new int[]{Color.rgb(255,218,185),
+            Color.rgb(244,164,96), Color.rgb(254, 176, 101)}; // orange
+    private final int[] color_red = new int[]{Color.rgb(255,160,122),
+            Color.rgb(255,99,71), Color.rgb(254, 100, 101)}; // red
 
     @Inject
     SoundHelper soundHelper;
@@ -77,14 +103,6 @@ public class NewHeatMapOverlay {
 
             }
         }
-        int[] color_green = new int[]{Color.rgb(152,251,152),Color.rgb(144,238,144), Color.rgb(101, 198, 138)}; // green
-        int[] color_yellow = new int[]{Color.rgb( 255,255,240),Color.rgb(255,255,224), Color.rgb(254, 230, 101)}; // yellow
-        int[] color_orange = new int[]{Color.rgb(255,218,185),Color.rgb(244,164,96), Color.rgb(254, 176, 101)}; // orange
-        int[] color_red = new int[]{Color.rgb(255,160,122),Color.rgb(255,99,71), Color.rgb(254, 100, 101)}; // red
-
-        float[] startPoints = {0.2f, 0.5f, 1.0f};
-        float transparency = 0.5f;
-        double opacity=0.7;
 
         Gradient gradient_green = new Gradient(color_green, startPoints);
         Gradient gradient_yellow = new Gradient(color_yellow, startPoints);
@@ -98,15 +116,19 @@ public class NewHeatMapOverlay {
                     .gradient(gradient_orange).radius(35)
                     .opacity(opacity)
                     .build();
-            mOverlay_yellow = mMap.addTileOverlay(new TileOverlayOptions().tileProvider(mProvider_orange));
+            mOverlay_orange = mMap.addTileOverlay(new TileOverlayOptions().tileProvider(mProvider_orange));
+            mOverlay_orange.setTransparency(transparency);
+            is_orange = true;
         }
         if (!list_red.isEmpty()) {
             mProvider_red = new HeatmapTileProvider.Builder()
                     .data(list_red)
                     .gradient(gradient_red).radius(35)
-                    .opacity(opacity)
+                    .opacity(opacity_red)
                     .build();
-            mOverlay_green = mMap.addTileOverlay(new TileOverlayOptions().tileProvider(mProvider_red));
+            mOverlay_red = mMap.addTileOverlay(new TileOverlayOptions().tileProvider(mProvider_red));
+            mOverlay_red.setTransparency(transparency);
+            is_red = true;
         }
         if (!list_yellow.isEmpty()) {
             mProvider_yellow = new HeatmapTileProvider.Builder()
@@ -114,20 +136,19 @@ public class NewHeatMapOverlay {
                     .gradient(gradient_yellow).radius(35)
                     .opacity(opacity)
                     .build();
-            mOverlay_orange = mMap.addTileOverlay(new TileOverlayOptions().tileProvider(mProvider_yellow));
+            mOverlay_yellow = mMap.addTileOverlay(new TileOverlayOptions().tileProvider(mProvider_yellow));
+            mOverlay_yellow.setTransparency(transparency);
+            is_yellow = true;
         }
         if (!list_green.isEmpty()) {
             mProvider_green = new HeatmapTileProvider.Builder()
                     .data(list_green)
                     .gradient(gradient_green).radius(35)
                     .build();
-            mOverlay_red = mMap.addTileOverlay(new TileOverlayOptions().tileProvider(mProvider_green));
+            mOverlay_green = mMap.addTileOverlay(new TileOverlayOptions().tileProvider(mProvider_green));
+            mOverlay_green.setTransparency(transparency);
+            is_green = true;
         }
-
-        mOverlay_green.setTransparency(transparency);
-        mOverlay_yellow.setTransparency(transparency);
-        mOverlay_orange.setTransparency(transparency);
-        mOverlay_red.setTransparency(transparency);
     }
 
     public void setRegions(Iterable<Region> regions) {
@@ -135,13 +156,25 @@ public class NewHeatMapOverlay {
     }
 
     public void remoteOverlay(){
-        mOverlay_green.remove();
-        mOverlay_yellow.remove();
-        mOverlay_orange.remove();
-        mOverlay_red.remove();
-        mOverlay_green.clearTileCache();
-        mOverlay_yellow.clearTileCache();
-        mOverlay_orange.clearTileCache();
-        mOverlay_red.clearTileCache();
+        if(is_green){
+            mOverlay_green.remove();
+            mOverlay_green.clearTileCache();
+        }
+        if(is_yellow){
+            mOverlay_yellow.remove();
+            mOverlay_yellow.clearTileCache();
+        }
+        if(is_orange){
+            mOverlay_orange.remove();
+            mOverlay_orange.clearTileCache();
+        }
+        if(is_red){
+            mOverlay_red.remove();
+            mOverlay_red.clearTileCache();
+        }
+        is_green = false;
+        is_yellow = false;
+        is_orange = false;
+        is_red = false;
     }
 }

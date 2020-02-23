@@ -227,7 +227,6 @@ public abstract class AirCastingActivity extends AirCastingBaseActivity implemen
         MenuInflater inflater = getDelegate().getMenuInflater();
 
         if (currentSessionManager.isSessionIdle()) {
-            inflater.inflate(R.menu.toolbar_autoupload_permission, menu);
             inflater.inflate(R.menu.toolbar_start_recording, menu);
         } else if (currentSessionManager.isSessionRecording()) {
             inflater.inflate(R.menu.toolbar_stop_recording, menu);

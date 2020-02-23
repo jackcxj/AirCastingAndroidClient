@@ -50,7 +50,6 @@ public abstract class NewAirCastingActivity extends NewAirCastingBaseActivity im
 
     @Inject SelectSensorHelper selectSensorHelper;
     @Inject TopBarHelper topBarHelper;
-    @Inject PhotoHelper photoHelper;
     @Inject
     SessionDataAccessor sessionData;
 
@@ -93,7 +92,7 @@ public abstract class NewAirCastingActivity extends NewAirCastingBaseActivity im
     private void initialize() {
         if (!initialized) {
             mGauges = findViewById(R.id.gauge_container);
-//            topBar = findViewById(R.id.top_bar);
+            topBar = findViewById(R.id.top_bar);
 
             if (mGaugeHelper == null) {
                 mGaugeHelper = new GaugeHelper(this, mGauges, resourceHelper, visibleSession, sessionData);
@@ -205,6 +204,7 @@ public abstract class NewAirCastingActivity extends NewAirCastingBaseActivity im
         MenuInflater inflater = getDelegate().getMenuInflater();
 
         if (currentSessionManager.isSessionIdle()) {
+            inflater.inflate(R.menu.toolbar_autoupload_permission, menu);
             inflater.inflate(R.menu.toolbar_start_recording, menu);
         } else if (currentSessionManager.isSessionRecording()){
             inflater.inflate(R.menu.toolbar_stop_recording, menu);

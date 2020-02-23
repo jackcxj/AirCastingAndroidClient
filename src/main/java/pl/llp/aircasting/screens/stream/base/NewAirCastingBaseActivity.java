@@ -55,7 +55,7 @@ public abstract class NewAirCastingBaseActivity extends NewRoboMapActivityWithPr
     SyncBroadcastReceiver syncBroadcastReceiver;
     SyncBroadcastReceiver registeredReceiver;
 
-    private ToggleAircastingManager toggleAircastingManager;
+    protected ToggleAircastingManager toggleAircastingManager;
     private boolean initialized = false;
     private long lastChecked = 0;
 

@@ -40,7 +40,6 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.TileOverlay;
@@ -54,7 +53,6 @@ import com.google.maps.android.heatmaps.HeatmapTileProvider;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import pl.llp.aircasting.Intents;
 import pl.llp.aircasting.R;
@@ -68,7 +66,6 @@ import pl.llp.aircasting.model.internal.Region;
 import pl.llp.aircasting.model.internal.MeasurementLevel;
 import pl.llp.aircasting.networking.drivers.AveragesDriver;
 import pl.llp.aircasting.networking.httpUtils.HttpResult;
-import pl.llp.aircasting.screens.common.ApplicationState;
 import pl.llp.aircasting.screens.common.ToastHelper;
 import pl.llp.aircasting.screens.common.helpers.LocationHelper;
 import pl.llp.aircasting.screens.common.helpers.ResourceHelper;
@@ -77,7 +74,6 @@ import pl.llp.aircasting.screens.common.helpers.SettingsHelper;
 import pl.llp.aircasting.screens.common.sessionState.CurrentSessionManager;
 import pl.llp.aircasting.screens.common.sessionState.SessionDataAccessor;
 import pl.llp.aircasting.screens.common.sessionState.VisibleSession;
-import pl.llp.aircasting.screens.stream.GaugeHelper;
 import pl.llp.aircasting.screens.stream.MeasurementPresenter;
 import pl.llp.aircasting.screens.stream.base.NewAirCastingActivity;
 import pl.llp.aircasting.sensor.common.ThresholdsHolder;
@@ -99,12 +95,7 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
     @Inject
     public CurrentSessionManager currentSessionManager;
     @Inject
-    ApplicationState state;
-    private long lastChecked = 0;
-    public static final long DELTA = TimeUnit.SECONDS.toMillis(15);
-    @Inject
     public Context context;
-    protected GaugeHelper mGaugeHelper;
     @Inject
     public ResourceHelper resourceHelper;
     @Inject
@@ -232,7 +223,8 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
     private void toggleHeatMapVisibility(MenuItem menuItem) {
         if (heatMapVisible) {
             heatMapVisible = false;
-            heatMapOverlay.remoteOverlay();
+//            heatMapOverlay.remoteOverlay();
+            mMap.clear();
             mapView.invalidate();
             menuItem.setIcon(R.drawable.toolbar_crowd_map_icon_inactive);
         } else {
@@ -273,7 +265,6 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
                 } else {
                     toggleSessionRecording();
                 }
-
                 break;
             case R.id.make_note:
                 Intents.makeANote(this);
@@ -293,7 +284,7 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
         checkConnection();
         initializeMap();
         measurementPresenter.registerListener(this);
-//        initializeRouteOverlay();
+        initializeRouteOverlay();
         updater = new HeatMapUpdater();
     }
 
@@ -336,7 +327,7 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
 
             for (Measurement measurement : measurements) {
                 LatLng latlng = new LatLng(measurement.getLatitude(), measurement.getLongitude());
-                addPoint(latlng);
+                drawPoint(latlng);
             }
         }
 
@@ -386,14 +377,30 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
     }
 
     private void toggleSessionRecording() {
-        toggleAirCasting();
-
+        if (currentSessionManager.isSessionRecording()) {
+            toggleAircastingManager.stopAirCasting();
+            mMap.clear();
+        } else {
+            toggleAircastingManager.startMobileAirCasting();
+        }
+        getDelegate().invalidateOptionsMenu();
         measurementPresenter.reset();
 //        traceOverlay.refresh(mapView);
 //        routeOverlay.clear();
 //        routeOverlay.invalidate();
         mapView.invalidate();
     }
+
+    //Todo: Need to implement AirCastingMapView.Listener by extend Fragment (Mapview changed)
+//    @Override
+//    public void onMapIdle() {
+//        runOnUiThread(new Runnable() {
+//            @Override
+//            public void run() {
+//                refreshSoundTrace();
+//            }
+//        });
+//    }
 
     protected void startSpinner() {
         if (spinner.getVisibility() != View.VISIBLE) {
@@ -417,16 +424,6 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
         if (!complete) mapView.invalidate();
     }
 
-//    @Override
-//    public void onMapIdle() {
-//        runOnUiThread(new Runnable() {
-//            @Override
-//            public void run() {
-//                refreshSoundTrace();
-//            }
-//        });
-//    }
-
     private void refreshSoundTrace() {
         soundTraceComplete = false;
         refresh();
@@ -435,6 +432,7 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
         mapView.invalidate();
         refresh();
     }
+    //Todo: until here
 
     @Subscribe
     public void onEvent(VisibleStreamUpdatedEvent event) {
@@ -502,37 +500,33 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
 
     @Override
     protected void refreshNotes() {
-//        noteOverlay.clear();
-//        for (Note note : visibleSession.getSessionNotes()) {
-//            noteOverlay.add(note);
-//        }
     }
 
     @Override
     public void onViewUpdated() {
-
     }
 
     @Override
     public void onAveragedMeasurement(Measurement measurement) {
-//        if (currentSessionManager.isSessionRecording()) {
-//            if (!settingsHelper.isAveraging()) {
-//                traceOverlay.update(measurement);
-//            } else if (lastMeasurement != null) {
-//                traceOverlay.update(lastMeasurement);
-//            }
-//        }
-//
-//        if (settingsHelper.isAveraging()) {
-//            lastMeasurement = measurement;
-//        }
-
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 mapView.invalidate();
             }
         });
+    }
+
+    public boolean checkUserLocationPermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, Request_User_Location_Code);
+            } else {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, Request_User_Location_Code);
+            }
+            return false;
+        } else {
+            return false;
+        }
     }
 
     /**
@@ -547,12 +541,12 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
-
         initGoogle();
         mMap.setMyLocationEnabled(true);
-        mMap.setOnCameraChangeListener(new GoogleMap.OnCameraChangeListener() {
+        mMap.setOnCameraMoveListener(new GoogleMap.OnCameraMoveListener() {
+
             @Override
-            public void onCameraChange(CameraPosition position) {
+            public void onCameraMove() {
                 bounds = mMap.getProjection().getVisibleRegion().latLngBounds;
             }
         });
@@ -564,20 +558,17 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
         double latitude = location.getLatitude();
         double longitude = location.getLongitude();
 
-        //首次定位时设置当前经纬度
         if (currentLatLng == null) {
             currentLatLng = new LatLng(latitude, longitude);
         }
         LatLng lastLatLng = currentLatLng;
         currentLatLng = new LatLng(location.getLatitude(), location.getLongitude());
-        //计算当前定位与前一次定位的距离，如果距离异常或是距离为0,则不做任何操作
         double movedDistance = CalculationByDistance(lastLatLng, currentLatLng);
-        if (movedDistance > DISTANCE_ERROR || movedDistance <= 0.001) {
+        if (movedDistance > DISTANCE_ERROR || movedDistance <= 0.0008) {
             return;
         } else if (currentSessionManager.isSessionRecording()) {
-
             locationHelper.updateLocation(location);
-            addPoint(currentLatLng);
+            drawPoint(currentLatLng);
         }
     }
 
@@ -599,6 +590,22 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
         }
     }
 
+    @Override
+    public void onConnected(@Nullable Bundle bundle) {
+        startLocation();
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+        Log.i("LocationFragment", "Connection suspended");
+        googleApiClient.connect();
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+        Log.i("LocationFragment", "Connection failed: ConnectionResult.getErrorCode() " + connectionResult.getErrorCode());
+    }
+
     void initGoogle() {
         googleApiClient = new GoogleApiClient.Builder(this)
                 .enableAutoManage(this /* FragmentActivity */,
@@ -610,17 +617,31 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
         googleApiClient.connect();
     }
 
-    @Override
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-        Log.i("LocationFragment", "Connection failed: ConnectionResult.getErrorCode() " + connectionResult.getErrorCode());
+    public double CalculationByDistance(LatLng StartP, LatLng EndP) {
+        int Radius = 6371;// radius of earth in Km
+        double lat1 = StartP.latitude;
+        double lat2 = EndP.latitude;
+        double lon1 = StartP.longitude;
+        double lon2 = EndP.longitude;
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1))
+                * Math.cos(Math.toRadians(lat2)) * Math.sin(dLon / 2)
+                * Math.sin(dLon / 2);
+        double c = 2 * Math.asin(Math.sqrt(a));
+        double valueResult = Radius * c;
+        double km = valueResult / 1;
+        DecimalFormat newFormat = new DecimalFormat("####");
+        int kmInDec = Integer.valueOf(newFormat.format(km));
+        double meter = valueResult % 1000;
+        int meterInDec = Integer.valueOf(newFormat.format(meter));
+        Log.i("Radius Value", "" + valueResult + "   KM  " + kmInDec
+                + " Meter   " + meterInDec);
+        return Radius * c;
     }
 
-    @Override
-    public void onConnected(@Nullable Bundle bundle) {
-        startLocation();
-    }
-
-    private double getNowData() {
+    public double getNowData() {
         mSessionData = mGaugeHelper.getsessionData();
         mVisibleSession = mGaugeHelper.getVisibleSession();
         mSensor = mVisibleSession.getSensor();
@@ -634,8 +655,7 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
         return nowData;
     }
 
-    private void addPoint(LatLng latLng) {
-        Log.e("add point", "all good");
+    private void drawPoint(LatLng latLng) {
         List<LatLng> list = new ArrayList<LatLng>();
         list.add(latLng);
         int temp = (int) Math.round(getNowData());
@@ -674,45 +694,6 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
 
         // Add the tile overlay to the map.
         mOverlay = mMap.addTileOverlay(new TileOverlayOptions().tileProvider(mProvider));
-
-    }
-
-    public double CalculationByDistance(LatLng StartP, LatLng EndP) {
-        int Radius = 6371;// radius of earth in Km
-        double lat1 = StartP.latitude;
-        double lat2 = EndP.latitude;
-        double lon1 = StartP.longitude;
-        double lon2 = EndP.longitude;
-        double dLat = Math.toRadians(lat2 - lat1);
-        double dLon = Math.toRadians(lon2 - lon1);
-        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
-                + Math.cos(Math.toRadians(lat1))
-                * Math.cos(Math.toRadians(lat2)) * Math.sin(dLon / 2)
-                * Math.sin(dLon / 2);
-        double c = 2 * Math.asin(Math.sqrt(a));
-        double valueResult = Radius * c;
-        double km = valueResult / 1;
-        DecimalFormat newFormat = new DecimalFormat("####");
-        int kmInDec = Integer.valueOf(newFormat.format(km));
-        double meter = valueResult % 1000;
-        int meterInDec = Integer.valueOf(newFormat.format(meter));
-        Log.i("Radius Value", "" + valueResult + "   KM  " + kmInDec
-                + " Meter   " + meterInDec);
-
-        return Radius * c;
-    }
-
-    public boolean checkUserLocationPermission() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, Request_User_Location_Code);
-            } else {
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, Request_User_Location_Code);
-            }
-            return false;
-        } else {
-            return false;
-        }
     }
 
     private void startLocation() {
@@ -729,12 +710,6 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
                     .getLongitude());
             mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLocation, 14));
         }
-    }
-
-    @Override
-    public void onConnectionSuspended(int i) {
-        Log.i("LocationFragment", "Connection suspended");
-        googleApiClient.connect();
     }
 
     @Override
