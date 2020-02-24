@@ -1,4 +1,4 @@
-## AirCasting - Share your Air!
+##COMP90055 Research Project - Code Refactor in Aircasting Application
 
 ### About
 
