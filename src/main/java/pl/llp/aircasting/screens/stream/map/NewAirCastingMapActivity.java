@@ -276,14 +276,6 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
         updater = new HeatMapUpdater();
     }
 
-    public void initToolbar(String title) {
-        toolbar = (Toolbar) findViewById(R.id.toolbar);
-        toolbar.setNavigationIcon(R.drawable.navigation_empty_icon);
-        toolbar.setContentInsetStartWithNavigation(0);
-        getDelegate().setSupportActionBar(toolbar);
-        getDelegate().setTitle(title);
-    }
-
     @Override
     public Injector getInjector() {
         return ((RoboApplication) getApplication()).getInjector();
@@ -316,7 +308,7 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
             Sensor sensor = visibleSession.getSensor();
             List<Measurement> measurements = visibleSession.getMeasurements(sensor);
 
-            Log.e("measurements", " "+measurements);
+            Log.i("measurements", " "+measurements);
             for (Measurement measurement : measurements) {
                 LatLng latlng = new LatLng(measurement.getLatitude(), measurement.getLongitude());
                 drawPoint(latlng);
@@ -635,7 +627,6 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
     private void drawPoint(LatLng latLng) {
         List<LatLng> list = new ArrayList<LatLng>();
         list.add(latLng);
-        Log.e("list", " "+list);
         int temp = (int) Math.round(getNowData());
 
         if (very_low <= temp && temp <= very_high) {

@@ -11,8 +11,7 @@
     <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
         android:orientation="vertical"
         android:layout_height="fill_parent"
-        android:layout_width="fill_parent"
-        >
+        android:layout_width="fill_parent">
 
         <include layout="@layout/toolbar"/>
 
@@ -38,10 +37,10 @@
     <!--navigation drawer-->
     <android.support.design.widget.NavigationView
         android:id="@+id/navigation_view"
-        android:layout_height="match_parent"
         android:layout_width="280dp"
+        android:layout_height="match_parent"
         android:layout_gravity="start"
         android:background="#FCFAFD"
-        app:menu="@menu/aircasting"/>
+        app:menu="@menu/aircasting" />
 
 </android.support.v4.widget.DrawerLayout>

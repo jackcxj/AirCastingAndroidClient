@@ -195,7 +195,6 @@
     <string name="streaming_alert_summary">Check to receive an email when active fixed sessions go dormant for >30 minutes</string>
     <string name="heat_map_density_warning">CrowdmMap grid cell size must be a number 1-40</string>
     <string name="session_exported">Exported sessions will be emailed within minutes. The email may end up in your spam folder.</string>
-    <string name="com.google.android.geo.API_KEY">AIzaSyAC5xgOYQCxt4ZaIAzaPoBSbwc4L9RfzI0</string>
-    <string name="com.google.android.geo.MAPS_KEY">AIzaSyAC5xgOYQCxt4ZaIAzaPoBSbwc4L9RfzI0</string>
     <string name="Automatically_upload">Automatically upload</string>
+    <string name="API_KEY">AIzaSyAC5xgOYQCxt4ZaIAzaPoBSbwc4L9RfzI0</string>
 </resources>
