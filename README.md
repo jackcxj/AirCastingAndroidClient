@@ -1,23 +1,22 @@
-## AirCasting - Share your Air!
+## COMP90055 Research Project - Code Refactor in Aircasting Application
 
-### About
+### Supervisor: Prof. Richard Sinnott
+### Designers: Ding Wu & Xiangjie Cui & Ze Yang
+### Organization: The University of Melbourne
 
-This is the android app for the AirCasting project - the project aims to build a platform for gathering, visualization and sharing of environmental data. To learn more about the platform visit [aircasting.org](http://aircasting.org).
+Aircasting is an online platform for environmental data visualization, which uses sensors Airbeam and Android applications to collect, upload, and display data. However, the application, completed in 2011, is out of service due to a lack of necessary maintenance and updates. Our project focuses on code refactoring for Aircasting's Android application. Its main content is to move Google Maps from version 1 to version 3 and retain its external activities and functions. At the same time, we also combined a new feature called Automatic real-time upload. To learn more about the platform visit [aircasting.org](http://aircasting.org).
 
-### Contribute
+### Let it compile and run properly in android device
 
-Unfortunately due to the fact that AirCasting is working on Google Maps v1, without a previously generated v1 API key you will not be able to run the project. We are planing to switch to Google Maps v2 in the future. If you do have the v1 API key, put it into `res/values/api_keys.xml`, import the project into Android Studio and build with Gradle.
+1. You need to apply a new Google API Key and put it into res/values/string.xml where string name="API_KEY". Here is a guide for you about applying Google API Key: https://developers.google.com/maps/documentation/javascript/get-api-key.
+2. If you want to use Automatic Real-time Upload Function, you need to run Server.java(under the project directory) in a separate process(We use Intellij to run this code separately as a server). You can also change the server port inside the code. After that, you also needs to modify the server ip and port in the code line 159 of StartMobileSessionActivity.class.
+
+### Newly Added Code & Modification
+
+Based on the open source code: https://github.com/HabitatMap/AirCastingAndroidClient, we have implemented the map-related features by adding NewAirCastingMapActivity, NewHeatMapOverlay(pl.llp.aircasting.screens.stream.map), NewAirCastingActivity, NewAirCastingBaseActivity(pl.llp.aircasting.screens.stream.base) and NewRoboMapActivityWithProgress(pl.llp.aircasting.screens.common.base) classes. 
+We also achieve Automatic Real-time Upload Function by modifying the original code StartMobileSessionActivity.class(pl.llp.aircasting.screens.sessionRecord). 
 
 ### Contact
 
-You can contact the authors by email at [info@habitatmap.org](mailto:info@habitatmap.org).
-
-### Thanks
-
-AirCasting uses The YourKit Java Profiler for Performance Tuning
-
-YourKit is kindly supporting open source projects with its full-featured Java Profiler. YourKit, LLC is the creator of innovative and intelligent tools for profiling Java and .NET applications. Take a look at YourKit's leading software products: [YourKit Java Profiler](http://www.yourkit.com/java/profiler/index.jsp) and [YourKit .NET Profiler](http://www.yourkit.com/.net/profiler/index.jsp).
-
-### License
-
-The project is licensed under the GPLv3. For more information see COPYING and visit [http://www.gnu.org/licenses/gpl-3.0.html](http://www.gnu.org/licenses/gpl-3.0.html).
+The original source code link is https://github.com/HabitatMap/AirCastingAndroidClient.
+If you have any questions about the modified part, please contact xiangjiec@student.unimelb.edu.au.
