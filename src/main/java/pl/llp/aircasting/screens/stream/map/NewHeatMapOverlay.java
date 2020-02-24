@@ -1,18 +1,3 @@
-/**
- * Author:  ANONYMOUS
- * Purpose: Evaluate a Cribbage hand containing four cards + a Starting card.
- * Project: COMP90041 Semester 2 2018 Project
- *
- * This class contains a main method which evaluates a Cribbage Hand.
- * This is achieved by entering a hand into the command line in the form of
- * two-character Strings, which are then translated into 'Card' objects.
- *
- * evaluateHand() takes an array of Cards and calculates the total number of
- * points gained given the rules of Cribbage.
- *
- * This class expects there to be 4 cards in a hand, plus an additional 5th
- * Starting Card, or 'S/C' as it is referred to in the comments.
- */
 package pl.llp.aircasting.screens.stream.map;
 
 import android.graphics.Color;
@@ -33,6 +18,13 @@ import pl.llp.aircasting.model.internal.MeasurementLevel;
 import pl.llp.aircasting.model.internal.Region;
 import pl.llp.aircasting.screens.common.sessionState.VisibleSession;
 import pl.llp.aircasting.sensor.common.ThresholdsHolder;
+
+/**
+ * Purpose: This class is used to achieve the same function in the HeatMapOverlay
+ *          It can be used to draw heat map based on the original google map, but
+ *          it requires to store the detail information in Iterable<Region> regions
+ *          in advance which can be used to draw the heat map.
+ */
 
 public class NewHeatMapOverlay {
 

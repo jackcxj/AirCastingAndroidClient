@@ -3,7 +3,6 @@ package pl.llp.aircasting.screens.stream.map;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Dialog;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -68,12 +67,10 @@ import pl.llp.aircasting.networking.drivers.AveragesDriver;
 import pl.llp.aircasting.networking.httpUtils.HttpResult;
 import pl.llp.aircasting.screens.common.ToastHelper;
 import pl.llp.aircasting.screens.common.helpers.LocationHelper;
-import pl.llp.aircasting.screens.common.helpers.ResourceHelper;
 import pl.llp.aircasting.screens.common.helpers.SelectSensorHelper;
-import pl.llp.aircasting.screens.common.helpers.SettingsHelper;
-import pl.llp.aircasting.screens.common.sessionState.CurrentSessionManager;
 import pl.llp.aircasting.screens.common.sessionState.SessionDataAccessor;
 import pl.llp.aircasting.screens.common.sessionState.VisibleSession;
+import pl.llp.aircasting.screens.dashboard.DashboardActivity;
 import pl.llp.aircasting.screens.stream.MeasurementPresenter;
 import pl.llp.aircasting.screens.stream.base.NewAirCastingActivity;
 import pl.llp.aircasting.sensor.common.ThresholdsHolder;
@@ -85,6 +82,14 @@ import roboguice.inject.InjectorProvider;
 import static com.google.android.gms.common.api.GoogleApiClient.*;
 import static pl.llp.aircasting.screens.common.helpers.LocationHelper.REQUEST_CHECK_SETTINGS;
 
+/**
+ * Purpose: This class is used to achieve all the map function related to MapView,
+ *          which is replaced with Fragment. It can be used to show the original
+ *          google map and all the components such as toolbar, gauges and topbar.
+ *          All the related functions like start session, traceOverlay and
+ *          heat map Overlay are fulfilled here.
+ */
+
 public class NewAirCastingMapActivity extends NewAirCastingActivity implements
         OnMapReadyCallback,
         ConnectionCallbacks,
@@ -92,71 +97,48 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
         LocationListener,
         AppCompatCallback, InjectorProvider, View.OnClickListener, LocationHelper.LocationSettingsListener, MeasurementPresenter.Listener {
 
-    @Inject
-    public CurrentSessionManager currentSessionManager;
-    @Inject
-    public Context context;
-    @Inject
-    public ResourceHelper resourceHelper;
-    @Inject
-    SelectSensorHelper selectSensorHelper;
-    @Inject
-    public VisibleSession visibleSession;
-    @Inject
-    public SettingsHelper settingsHelper;
-    @Inject
-    ConnectivityManager connectivityManager;
-    @Inject
-    MeasurementPresenter measurementPresenter;
-    @Inject
-    public LocationHelper locationHelper;
-    @Inject
-    ThresholdsHolder thresholds;
-    @Inject
-    NewHeatMapOverlay heatMapOverlay;
-    @Inject
-    AveragesDriver averagesDriver;
+    @Inject public ConnectivityManager connectivityManager;
+    @Inject SelectSensorHelper selectSensorHelper;
+    @Inject ThresholdsHolder thresholds;
+    @Inject NewHeatMapOverlay heatMapOverlay;
+    @Inject AveragesDriver averagesDriver;
     @InjectView(R.id.spinner)
     ImageView spinner;
     @InjectResource(R.anim.spinner)
     Animation spinnerAnimation;
-    // 添加导航栏和顶部
-    public Toolbar toolbar;
 
-    // 添加地图组件
+    // Navigation drawer and above part
+    public Toolbar toolbar;
+    public DrawerLayout drawerLayout;
+    private boolean zoomToSession = true;
+    private boolean soundTraceComplete = true;
+
+    // Google map component
+    private View mapView;
     private GoogleMap mMap;
     private GoogleApiClient googleApiClient;
     private static final int Request_User_Location_Code = 99;
-    private View mapView;
-
-    // 添加数据
-    private boolean zoomToSession = true;
-    private boolean soundTraceComplete = true;
 
     //Navigation right
     private static final int ACTION_TOGGLE = 1;
     private static final int ACTION_CENTER = 2;
     private int mRequestedAction;
 
-    //traceoverlay
-    private LatLng currentLatLng;
-    /**
-     * judge distance, if it exceeds it which means the error of the change
-     */
+    //TraceOverlay relevant
     private static final int DISTANCE_ERROR = 10;
+    private LatLng currentLatLng;
     private SessionDataAccessor mSessionData;
     private VisibleSession mVisibleSession;
     private Sensor mSensor;
     private int very_low, low, mid, high, very_high;
     private int[] colors;
     private Location mLastLocation;
-
-    //heatmapoverlay
-    private static final String HEAT_MAP_VISIBLE = "heat_map_visible";
-    private boolean heatMapVisible = false;
-    public DrawerLayout drawerLayout;
     private TileOverlay mOverlay;
     private HeatmapTileProvider mProvider;
+
+    //HeatMapOverlay relevant
+    private static final String HEAT_MAP_VISIBLE = "heat_map_visible";
+    private boolean heatMapVisible = false;
     private LatLngBounds bounds;
     private int requestsOutstanding = 0;
     private HeatMapUpdater updater;
@@ -167,9 +149,7 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
         super.onCreate(savedInstanceState);
 
         drawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
-
         setContentView(R.layout.new_map);
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             checkUserLocationPermission();
         }
@@ -180,7 +160,6 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
         mapFragment.getMapAsync(this);
 
         mapView = mapFragment.getView();
-
         if (mapView != null &&
                 mapView.findViewById(1) != null) {
             // Get the button view
@@ -193,7 +172,6 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
             layoutParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM, RelativeLayout.TRUE);
             layoutParams.setMargins(0, 0, 30, 30);
         }
-
         initToolbar("Map");
         initNavigationDrawer();
     }
@@ -201,6 +179,7 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
     @Override
     public void onPostResume() {
         super.onPostResume();
+
         getDelegate().invalidateOptionsMenu();
     }
 
@@ -223,7 +202,6 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
     private void toggleHeatMapVisibility(MenuItem menuItem) {
         if (heatMapVisible) {
             heatMapVisible = false;
-//            heatMapOverlay.remoteOverlay();
             mMap.clear();
             mapView.invalidate();
             menuItem.setIcon(R.drawable.toolbar_crowd_map_icon_inactive);
@@ -255,6 +233,15 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
         super.onOptionsItemSelected(menuItem);
 
         switch (menuItem.getItemId()) {
+            case R.id.auto_upload:
+                if (DashboardActivity.auto_upload == false) {
+                    Toast.makeText(this, "It is allow to upload the data automatically", Toast.LENGTH_SHORT).show();
+                    DashboardActivity.auto_upload = true;
+                } else {
+                    Toast.makeText(this, "It is not allow to upload the data automatically", Toast.LENGTH_SHORT).show();
+                    DashboardActivity.auto_upload = false;
+                }
+                break;
             case R.id.toggle_aircasting:
                 mRequestedAction = ACTION_TOGGLE;
 
@@ -284,7 +271,8 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
         checkConnection();
         initializeMap();
         measurementPresenter.registerListener(this);
-        initializeRouteOverlay();
+        //Todo: there is a problem after resume traceOverlay which needs to fix
+//        initializeRouteOverlay();
         updater = new HeatMapUpdater();
     }
 
@@ -304,11 +292,6 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
     @Override
     protected void onPause() {
         super.onPause();
-
-//        routeRefreshDetector.stop();
-//        traceOverlay.stopDrawing(mapView);
-//        heatMapDetector.stop();
-//        soundTraceDetector.stop();
     }
 
     @Override
@@ -318,46 +301,32 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
         googleApiClient.disconnect();
     }
 
-    private void initializeRouteOverlay() {
-//        routeOverlay.clear();
+    private void initializeMap() {
+        if (settingsHelper.isFirstLaunch()) {
+            Location location = locationHelper.getLastLocation();
+            if (location != null) {
+                CameraUpdateFactory.newLatLng(new LatLng(location.getLatitude(), location.getLongitude()));
+            }
+            settingsHelper.setFirstLaunch(false);
+        }
+    }
 
+    private void initializeRouteOverlay() {
         if (shouldShowRoute()) {
             Sensor sensor = visibleSession.getSensor();
             List<Measurement> measurements = visibleSession.getMeasurements(sensor);
 
+            Log.e("measurements", " "+measurements);
             for (Measurement measurement : measurements) {
                 LatLng latlng = new LatLng(measurement.getLatitude(), measurement.getLongitude());
                 drawPoint(latlng);
             }
         }
-
-//        routeRefreshDetector = detectMapIdle(mapView, 100, new MapIdleDetector.MapIdleListener() {
-//            @Override
-//            public void onMapIdle() {
-//                runOnUiThread(new Runnable() {
-//                    @Override
-//                    public void run() {
-//                        routeOverlay.invalidate();
-//                        mapView.invalidate();
-//                    }
-//                });
-//            }
-//        });
     }
 
     private boolean shouldShowRoute() {
         return settingsHelper.isShowRoute() &&
                 (visibleSession.isVisibleSessionRecording() || visibleSession.isVisibleSessionViewed());
-    }
-
-    private void initializeMap() {
-        if (settingsHelper.isFirstLaunch()) {
-            Location location = locationHelper.getLastLocation();
-            if (location != null) {
-                CameraUpdateFactory.newLatLng(new LatLng(location.getLatitude(),location.getLongitude()));
-            }
-            settingsHelper.setFirstLaunch(false);
-        }
     }
 
     @Override
@@ -385,9 +354,6 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
         }
         getDelegate().invalidateOptionsMenu();
         measurementPresenter.reset();
-//        traceOverlay.refresh(mapView);
-//        routeOverlay.clear();
-//        routeOverlay.invalidate();
         mapView.invalidate();
     }
 
@@ -474,7 +440,7 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
     protected void centerMap() {
         if (locationHelper.getLastLocation() != null) {
             Location location = locationHelper.getLastLocation();
-            CameraUpdateFactory.newLatLng(new LatLng(location.getLatitude(),location.getLongitude()));
+            CameraUpdateFactory.newLatLng(new LatLng(location.getLatitude(), location.getLongitude()));
         }
     }
 
@@ -617,6 +583,10 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
         googleApiClient.connect();
     }
 
+    /**
+     * This method is used to calculate the distance between two position with latitude
+     * and longitude. It is used in the traceOverlay to avoid a smalle or large joggle.
+     */
     public double CalculationByDistance(LatLng StartP, LatLng EndP) {
         int Radius = 6371;// radius of earth in Km
         double lat1 = StartP.latitude;
@@ -641,6 +611,9 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
         return Radius * c;
     }
 
+    /**
+     * This method is used to obtain the current showing value in the gauges
+     */
     public double getNowData() {
         mSessionData = mGaugeHelper.getsessionData();
         mVisibleSession = mGaugeHelper.getVisibleSession();
@@ -655,9 +628,14 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
         return nowData;
     }
 
+    /**
+     * This method is used to draw the point when starting a new session which is
+     * main method to fulfill the traceOverlay function.
+     */
     private void drawPoint(LatLng latLng) {
         List<LatLng> list = new ArrayList<LatLng>();
         list.add(latLng);
+        Log.e("list", " "+list);
         int temp = (int) Math.round(getNowData());
 
         if (very_low <= temp && temp <= very_high) {
@@ -694,6 +672,7 @@ public class NewAirCastingMapActivity extends NewAirCastingActivity implements
 
         // Add the tile overlay to the map.
         mOverlay = mMap.addTileOverlay(new TileOverlayOptions().tileProvider(mProvider));
+        mapView.invalidate();
     }
 
     private void startLocation() {

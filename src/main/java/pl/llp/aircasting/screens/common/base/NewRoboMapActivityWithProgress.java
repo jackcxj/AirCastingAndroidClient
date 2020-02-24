@@ -178,11 +178,6 @@ public abstract class NewRoboMapActivityWithProgress extends FragmentActivity im
         eventManager.fire(new OnContentViewAvailableEvent());
     }
 
-//    @Override
-//    public Object onRetainNonConfigurationInstance() {
-//        return task;
-//    }
-
     @Override
     protected void onRestart() {
         scope.enter(this);

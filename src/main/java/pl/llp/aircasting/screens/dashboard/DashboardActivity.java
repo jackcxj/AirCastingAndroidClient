@@ -60,7 +60,7 @@ public class DashboardActivity extends DashboardBaseActivity implements Dashboar
     private static final String DASHBOARD_BUNDLE = "dashboard_bundle";
     private static final String HIDDEN_STREAMS = "hidden_streams";
 
-    private int count = 0;
+    public static boolean auto_upload = false;
 
     @Inject CurrentSessionSensorManager currentSessionSensorManager;
     @Inject ResourceHelper mResourceHelper;
@@ -327,14 +327,13 @@ public class DashboardActivity extends DashboardBaseActivity implements Dashboar
                 toggleSessionReorder(menuItem);
                 break;
             case R.id.auto_upload:
-                if(count%2 == 0){
+                if(auto_upload == false){
                     Toast.makeText(this, "It is allow to upload the data automatically", Toast.LENGTH_SHORT).show();
-                    count++;
+                    auto_upload = true;
                 }else{
                     Toast.makeText(this, "It is not allow to upload the data automatically", Toast.LENGTH_SHORT).show();
-                    count++;
+                    auto_upload = false;
                 }
-
         }
         return true;
     }

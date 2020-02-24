@@ -9,7 +9,6 @@ import pl.llp.aircasting.R;
 import pl.llp.aircasting.event.measurements.MobileMeasurementEvent;
 import pl.llp.aircasting.event.sensor.FixedSensorEvent;
 import pl.llp.aircasting.event.sensor.SensorEvent;
-import pl.llp.aircasting.screens.common.helpers.PhotoHelper;
 import pl.llp.aircasting.screens.common.helpers.ResourceHelper;
 import pl.llp.aircasting.screens.common.helpers.SelectSensorHelper;
 import pl.llp.aircasting.screens.common.sessionState.SessionDataAccessor;

@@ -41,6 +41,7 @@ import pl.llp.aircasting.screens.common.ToastHelper;
 import pl.llp.aircasting.screens.common.sessionState.CurrentSessionManager;
 import pl.llp.aircasting.screens.common.base.DialogActivity;
 
+import pl.llp.aircasting.screens.dashboard.DashboardActivity;
 import pl.llp.aircasting.screens.sessions.CSVHelper;
 import pl.llp.aircasting.storage.repository.SessionRepository;
 import pl.llp.aircasting.util.Constants;
@@ -51,7 +52,12 @@ import roboguice.inject.InjectView;
 import static java.lang.String.valueOf;
 
 /**
- * Created by radek on 04/09/17.
+ * Created by radek on 04/09/17
+ * Modified by Jack on 06/02/20
+ * This class is used to fulfill the function that after the user clicks
+ * the start session button. It mainly fulfills the function that record
+ * the sensor data and here we add the automatic upload function in this
+ * part where it runs in the child thread.
  */
 public class StartMobileSessionActivity extends DialogActivity implements View.OnClickListener {
     @InjectView(R.id.start_session)
@@ -71,18 +77,7 @@ public class StartMobileSessionActivity extends DialogActivity implements View.O
     @Inject
     LocationHelper locationHelper;
 
-
-    @InjectResource(R.string.share_title)
-    String shareTitle;
-    @InjectResource(R.string.share_file)
-    String shareChooserTitle;
-    @InjectResource(R.string.session_file_template)
-    String shareText;
-
-    private SessionRepository sessionRepository;
-    private CSVHelper csvHelper;
     private Session session;
-    private long sessionId;
     private ToggleAircastingManager toggleAircastingManager;
 
     final Closer closer = Closer.create();
@@ -132,21 +127,24 @@ public class StartMobileSessionActivity extends DialogActivity implements View.O
         startMobileSession();
 
         session = currentSessionManager.getCurrentSession();
-
-        new Thread() {
-            @Override
-            public void run() {
-                while (currentSessionManager.isSessionRecording()) {
-                    try {
-                        Thread.sleep(4000);
-                        File file = prepareCSV(StartMobileSessionActivity.this, session);
-                        uploadFile(file);
-                    } catch (Exception e) {
-                        e.printStackTrace();
+        if (DashboardActivity.auto_upload == true) {
+            new Thread() {
+                @Override
+                public void run() {
+                    while (currentSessionManager.isSessionRecording()) {
+                        try {
+                            Thread.sleep(4000);
+                            File file = prepareCSV(StartMobileSessionActivity.this, session);
+                            uploadFile(file);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
                     }
                 }
-            }
-        }.start();
+            }.start();
+        } else {
+            Toast.makeText(this, "This session will not upload automatically", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void uploadFile(final File file) {
@@ -155,7 +153,10 @@ public class StartMobileSessionActivity extends DialogActivity implements View.O
             @Override
             public void run() {
                 try {
-                    client = new Socket("10.12.237.177", 8899);
+                    /**
+                     * The server ip address and port need to modify into the correct one
+                     */
+                    client = new Socket("10.12.237.177", 8888);
                     Log.i("Connect the server", "successful");
                     byte[] mybytearray = new byte[(int) file.length()]; //create a byte array to file
 
